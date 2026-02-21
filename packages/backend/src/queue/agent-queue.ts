@@ -73,6 +73,16 @@ export function startAgentWorker(): Worker<AgentJobData> {
       const transport = new StdioClientTransport({
         command: 'node',
         args: [process.env.MCP_SERVER_PATH ?? ''],
+        // Explicitly forward DB + service env vars so the MCP subprocess
+        // uses the same credentials as the backend (not its own defaults)
+        env: {
+          ...process.env,
+          DB_HOST:     process.env.DB_HOST     ?? 'localhost',
+          DB_PORT:     process.env.DB_PORT     ?? '13306',
+          DB_USER:     process.env.DB_USER     ?? 'root',
+          DB_PASSWORD: process.env.DB_PASSWORD ?? '',
+          DB_NAME:     process.env.DB_NAME     ?? 'lucidreview',
+        },
       });
       const mcpClient = new McpClient({ name: 'lucidreview-agent', version: '0.1.0' });
       await mcpClient.connect(transport);

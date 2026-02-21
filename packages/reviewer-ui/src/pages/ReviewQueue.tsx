@@ -199,7 +199,7 @@ function ReviewRow({
         <AgentStatusLabel status={review.status} runId={review.latestRunId} />
       </td>
       <td className="px-4 py-2.5 text-[11px] text-slate-500">
-        {format(new Date(review.createdAt), 'MMM d, HH:mm')}
+        {review.createdAt ? (() => { try { const d = new Date(review.createdAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMM d, HH:mm'); } catch { return '—'; } })() : '—'}
       </td>
       <td className="px-4 py-2.5 text-right">
         {review.status === 'pending' && (

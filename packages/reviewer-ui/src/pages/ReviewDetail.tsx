@@ -70,7 +70,7 @@ function PatientHeader({
               )}
               <span className="flex items-center gap-1">
                 <Calendar size={12} />
-                {format(new Date(review.createdAt), 'MMM d, yyyy HH:mm')}
+                {review.createdAt ? (() => { try { const d = new Date(review.createdAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMM d, yyyy HH:mm'); } catch { return '—'; } })() : '—'}
               </span>
             </div>
           </div>
