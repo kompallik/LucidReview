@@ -20,7 +20,8 @@ app = Flask(__name__)
 # ---------------------------------------------------------------------------
 # NLP pipeline setup
 # ---------------------------------------------------------------------------
-nlp = medspacy.load("en_core_web_sm")
+# Disable the parser to avoid conflict with PyRuSH sentencizer (spaCy E043)
+nlp = medspacy.load("en_core_web_sm", disable=["parser"])
 
 # Add target rules for common clinical entity types
 target_matcher = nlp.get_pipe("medspacy_target_matcher")
