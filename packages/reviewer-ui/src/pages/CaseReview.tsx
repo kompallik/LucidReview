@@ -457,7 +457,11 @@ export default function CaseReview() {
 
   function processToolCalls(toolCalls: AgentToolCall[], treeLeafIds: string[]) {
     for (const tc of toolCalls) {
-      const { toolName, output, id } = tc;
+      // Support both camelCase (serialized) and snake_case (legacy) field names
+      const raw = tc as unknown as Record<string, unknown>;
+      const toolName = String(raw['toolName'] ?? raw['tool_name'] ?? '');
+      const output = raw['output'];
+      const id = String(raw['id'] ?? '');
       if (seenToolIds.has(id)) continue;
       setSeenToolIds(prev => new Set([...prev, id]));
 
@@ -590,6 +594,7 @@ export default function CaseReview() {
 
       // Step D: Poll trace for updates
       let lastToolCount = 0;
+      let lastTurnCount = 0;
 
       pollRef.current = setInterval(() => {
         void (async () => {
@@ -599,6 +604,38 @@ export default function CaseReview() {
               api.agentRuns.getTrace(rid),
             ]);
 
+            // Surface new AI reasoning text from assistant turns
+            const allTurns = trace.turns;
+            if (allTurns.length > lastTurnCount) {
+              const newTurns = allTurns.slice(lastTurnCount);
+              lastTurnCount = allTurns.length;
+              for (const { turn } of newTurns) {
+                const t = turn as unknown as Record<string, unknown>;
+                if (t['role'] !== 'assistant') continue;
+                try {
+                  const content = typeof t['content'] === 'string'
+                    ? JSON.parse(t['content'] as string)
+                    : t['content'];
+                  if (Array.isArray(content)) {
+                    for (const block of content) {
+                      // Bedrock text blocks: { text: "..." } — no 'type' field
+                      // toolUse blocks: { toolUse: { name, ... } }
+                      const text = block?.text ?? block?.['text'];
+                      const isToolUse = !!(block?.toolUse ?? block?.['toolUse']);
+                      if (text && !isToolUse && String(text).trim()) {
+                        appendLog({
+                          ts: nowTs(),
+                          tool: '🤖 AI',
+                          status: 'done',
+                          preview: String(text).slice(0, 300),
+                        });
+                      }
+                    }
+                  }
+                } catch { /* ignore */ }
+              }
+            }
+
             // Flatten all tool calls from all turns
             const allToolCalls = trace.turns.flatMap(t => t.toolCalls);
 
@@ -606,8 +643,11 @@ export default function CaseReview() {
               const newCalls = allToolCalls.slice(lastToolCount);
               // Show currently running tool as "running" in workflow steps
               const lastCall = allToolCalls[allToolCalls.length - 1];
-              if (lastCall) markStep(lastCall.toolName, 'running');
-              processToolCalls(newCalls, treeLeafIds);
+              if (lastCall) {
+                const lc = lastCall as unknown as Record<string, unknown>;
+                markStep(String(lc['toolName'] ?? lc['tool_name'] ?? ''), 'running');
+              }
+              processToolCalls(newCalls as AgentToolCall[], treeLeafIds);
               lastToolCount = allToolCalls.length;
             }
 
@@ -771,31 +811,40 @@ export default function CaseReview() {
               {log.length === 0 && phase === 'idle' && (
                 <p className="text-slate-400 italic text-center mt-4">Click Run Review to start</p>
               )}
-              {log.map((entry, i) => (
-                <div
-                  key={i}
-                  className={`flex gap-1.5 ${
-                    entry.status === 'error'   ? 'text-red-500'  :
-                    entry.status === 'running' ? 'text-blue-500' :
-                                                 'text-slate-500'
-                  }`}
-                >
-                  <span className="text-slate-400 shrink-0">{entry.ts}</span>
-                  <span
-                    className={`shrink-0 ${
-                      entry.status === 'done'    ? 'text-emerald-600' :
-                      entry.status === 'running' ? 'text-blue-500'    :
-                                                   'text-red-500'
-                    }`}
-                  >
-                    {entry.status === 'done' ? '✓' : entry.status === 'running' ? '▶' : '✗'}
-                  </span>
-                  <span className="truncate text-slate-600">{entry.tool}</span>
-                  {entry.preview && (
-                    <span className="text-slate-400 truncate">— {entry.preview}</span>
-                  )}
-                </div>
-              ))}
+              {log.map((entry, i) => {
+                const isAI = entry.tool === '🤖 AI';
+                return (
+                  <div key={i} className={`${isAI ? 'mt-1 mb-1' : ''}`}>
+                    {isAI ? (
+                      /* AI reasoning block — full text, word-wrapped */
+                      <div className="rounded-md bg-violet-50 border border-violet-200 px-2 py-1.5">
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <span className="text-slate-400 text-[9px]">{entry.ts}</span>
+                          <span className="text-[9px] font-semibold text-violet-600">AI Reasoning</span>
+                        </div>
+                        <p className="text-[10px] text-violet-800 leading-relaxed whitespace-pre-wrap break-words">{entry.preview}</p>
+                      </div>
+                    ) : (
+                      <div className={`flex gap-1.5 ${
+                        entry.status === 'error'   ? 'text-red-500'  :
+                        entry.status === 'running' ? 'text-blue-500' : 'text-slate-500'
+                      }`}>
+                        <span className="text-slate-400 shrink-0">{entry.ts}</span>
+                        <span className={`shrink-0 ${
+                          entry.status === 'done'    ? 'text-emerald-600' :
+                          entry.status === 'running' ? 'text-blue-500'    : 'text-red-500'
+                        }`}>
+                          {entry.status === 'done' ? '✓' : entry.status === 'running' ? '▶' : '✗'}
+                        </span>
+                        <span className="truncate text-slate-600">{entry.tool}</span>
+                        {entry.preview && (
+                          <span className="text-slate-400 truncate">— {entry.preview}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {(phase === 'running' || phase === 'loading_criteria') && (
                 <div className="flex gap-1.5 text-blue-400">
                   <span className="text-slate-400">{nowTs()}</span>

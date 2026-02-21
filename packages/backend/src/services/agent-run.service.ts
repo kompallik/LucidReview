@@ -24,6 +24,62 @@ export interface TraceResult {
   }>;
 }
 
+/** Serialize a raw DB agent_runs row to camelCase for the API response. */
+function serializeRun(row: Record<string, unknown>): Record<string, unknown> {
+  const d = (v: unknown) =>
+    v instanceof Date ? v.toISOString() : (v ?? null);
+  return {
+    id: row['id'],
+    caseNumber: row['case_number'],
+    status: row['status'],
+    modelId: row['model_id'],
+    promptVersion: row['prompt_version'] ?? null,
+    totalTurns: row['total_turns'] ?? 0,
+    determination: row['determination'] ?? null,
+    error: row['error'] ?? null,
+    inputTokensTotal: Number(row['input_tokens_total'] ?? 0),
+    outputTokensTotal: Number(row['output_tokens_total'] ?? 0),
+    startedAt: d(row['started_at']),
+    completedAt: d(row['completed_at']),
+  };
+}
+
+/** Serialize a raw DB agent_turns row to camelCase. */
+function serializeTurn(row: Record<string, unknown>): Record<string, unknown> {
+  const d = (v: unknown) =>
+    v instanceof Date ? v.toISOString() : (v ?? null);
+  return {
+    id: row['id'],
+    runId: row['run_id'],
+    turnNumber: row['turn_number'],
+    role: row['role'],
+    content: row['content'],
+    stopReason: row['stop_reason'] ?? null,
+    inputTokens: Number(row['input_tokens'] ?? 0),
+    outputTokens: Number(row['output_tokens'] ?? 0),
+    latencyMs: row['latency_ms'] ?? null,
+    createdAt: d(row['created_at']),
+  };
+}
+
+/** Serialize a raw DB agent_tool_calls row to camelCase. */
+function serializeToolCall(row: Record<string, unknown>): Record<string, unknown> {
+  const d = (v: unknown) =>
+    v instanceof Date ? v.toISOString() : (v ?? null);
+  return {
+    id: row['id'],
+    runId: row['run_id'],
+    turnNumber: row['turn_number'],
+    toolUseId: row['tool_use_id'],
+    toolName: row['tool_name'],
+    input: row['input'],
+    output: row['output'],
+    latencyMs: row['latency_ms'] ?? null,
+    error: row['error'] ?? null,
+    createdAt: d(row['created_at']),
+  };
+}
+
 /**
  * Create a new agent run record and launch the agent asynchronously.
  */
@@ -65,7 +121,7 @@ export async function createAndRun(
  */
 export async function getRun(runId: string): Promise<AgentRunRow | null> {
   const row = await db('agent_runs').where({ id: runId }).first();
-  return row ?? null;
+  return row ? (serializeRun(row) as unknown as AgentRunRow) : null;
 }
 
 /**
@@ -93,11 +149,11 @@ export async function getTrace(runId: string): Promise<TraceResult> {
   }
 
   const traceTurns = turns.map((turn: Record<string, unknown>) => ({
-    turn,
-    toolCalls: toolCallsByTurn.get(turn.turn_number as number) ?? [],
+    turn: serializeTurn(turn),
+    toolCalls: (toolCallsByTurn.get(turn['turn_number'] as number) ?? []).map(serializeToolCall),
   }));
 
-  return { run, turns: traceTurns };
+  return { run: serializeRun(run) as unknown as AgentRunRow, turns: traceTurns };
 }
 
 /**
