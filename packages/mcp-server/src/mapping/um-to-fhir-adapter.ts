@@ -350,6 +350,9 @@ export class DefaultUmToFhirAdapter implements UmToFhirAdapter {
     for (const entity of entities) {
       const id = uuid();
 
+      // Track whether a FHIR resource was created for this entity
+      let resourceCreated = false;
+
       if (entity.type === 'problem') {
         let verificationCode: string;
         if (entity.assertion === 'affirmed') {
@@ -390,6 +393,7 @@ export class DefaultUmToFhirAdapter implements UmToFhirAdapter {
           resource: condition,
           request: { method: 'PUT', url: `Condition/${id}` },
         });
+        resourceCreated = true;
       } else if (entity.type === 'medication') {
         const medStatement: fhir4.MedicationStatement = {
           resourceType: 'MedicationStatement',
@@ -415,6 +419,7 @@ export class DefaultUmToFhirAdapter implements UmToFhirAdapter {
           resource: medStatement,
           request: { method: 'PUT', url: `MedicationStatement/${id}` },
         });
+        resourceCreated = true;
       } else if (entity.type === 'lab') {
         const observation: fhir4.Observation = {
           resourceType: 'Observation',
@@ -450,42 +455,46 @@ export class DefaultUmToFhirAdapter implements UmToFhirAdapter {
           resource: observation,
           request: { method: 'PUT', url: `Observation/${id}` },
         });
+        resourceCreated = true;
       }
 
-      // Provenance for each NLP-derived resource
-      const provenanceId = uuid();
-      const provenance: fhir4.Provenance = {
-        resourceType: 'Provenance',
-        id: provenanceId,
-        target: [{ reference: `urn:uuid:${id}` }],
-        recorded: new Date().toISOString(),
-        agent: [
-          {
-            type: {
-              coding: [
-                {
-                  system: 'http://terminology.hl7.org/CodeSystem/provenance-participant-type',
-                  code: 'assembler',
-                },
-              ],
+      // Only add Provenance when a resource was actually created —
+      // avoids HAPI-0541 "unable to satisfy placeholder ID" when
+      // entity types like 'other'/'sign_symptom' produce no FHIR resource
+      if (resourceCreated) {
+        const provenanceId = uuid();
+        const provenance: fhir4.Provenance = {
+          resourceType: 'Provenance',
+          id: provenanceId,
+          target: [{ reference: `urn:uuid:${id}` }],
+          recorded: new Date().toISOString(),
+          agent: [
+            {
+              type: {
+                coding: [
+                  {
+                    system: 'http://terminology.hl7.org/CodeSystem/provenance-participant-type',
+                    code: 'assembler',
+                  },
+                ],
+              },
+              who: { display: 'NLP Extraction (cTAKES)' },
             },
-            who: { display: 'NLP Extraction (cTAKES)' },
-          },
-        ],
-        entity: [
-          {
-            role: 'source',
-            // Use display-only reference so HAPI FHIR doesn't try to resolve
-            // the source document URL — avoids HAPI-1094 provenance reference error
-            what: { display: documentRef },
-          },
-        ],
-      };
-      entries.push({
-        fullUrl: `urn:uuid:${provenanceId}`,
-        resource: provenance,
-        request: { method: 'PUT', url: `Provenance/${provenanceId}` },
-      });
+          ],
+          entity: [
+            {
+              role: 'source',
+              // Display-only ref — avoids HAPI-1094 external reference validation
+              what: { display: documentRef },
+            },
+          ],
+        };
+        entries.push({
+          fullUrl: `urn:uuid:${provenanceId}`,
+          resource: provenance,
+          request: { method: 'PUT', url: `Provenance/${provenanceId}` },
+        });
+      }
     }
 
     return entries;
