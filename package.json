@@ -1,0 +1,32 @@
+{
+  "name": "lucidreview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @lucidreview/backend dev & pnpm --filter @lucidreview/reviewer-ui dev",
+    "build": "pnpm --filter @lucidreview/shared build && pnpm --filter @lucidreview/mcp-server build && pnpm --filter @lucidreview/backend build && pnpm --filter @lucidreview/reviewer-ui build",
+    "test": "pnpm -r test",
+    "test:unit": "pnpm -r --filter './packages/**' vitest run --reporter=verbose",
+    "test:integration": "pnpm -r --filter './packages/**' vitest run --reporter=verbose --config vitest.config.ts -- --testPathPattern integration",
+    "migrate": "pnpm --filter @lucidreview/backend migrate",
+    "lint": "pnpm -r lint",
+    "seed:fhir": "npx tsx scripts/seed-fhir.ts",
+    "upload:cql": "npx tsx scripts/upload-cql.ts",
+    "setup": "npx tsx scripts/setup.ts",
+    "health-check": "npx tsx scripts/health-check.ts",
+    "demo": "npx tsx scripts/demo.ts",
+    "clean": "pnpm -r exec rm -rf dist node_modules"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "eslint": "^9.27.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

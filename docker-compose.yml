@@ -1,0 +1,149 @@
+version: "3.9"
+
+# ============================================================
+# LucidReview Local Development Stack
+# 6 containers: backend, hapi-fhir, ctakes (NLP), mysql, redis, reviewer-ui
+# ============================================================
+
+services:
+
+  # ── 1. Main Application Server ──────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+    container_name: lucidreview-backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev}
+      DB_NAME: lucidreview
+      HAPI_FHIR_URL: http://hapi-fhir:8080/fhir
+      CTAKES_URL: http://ctakes:8080
+      REDIS_URL: redis://redis:6379
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-4-6}
+      UM_SYSTEM_BASE_URL: ${UM_SYSTEM_BASE_URL:-}
+      UM_SYSTEM_API_KEY: ${UM_SYSTEM_API_KEY:-}
+      MCP_SERVER_PATH: /app/packages/mcp-server/dist/index.js
+    volumes:
+      # Mount AWS credentials read-only for local Bedrock access
+      - ${HOME}/.aws:/root/.aws:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      hapi-fhir:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── 2. HAPI FHIR R4 Server (Clinical Reasoning + CQL) ───────
+  hapi-fhir:
+    image: hapiproject/hapi:latest
+    container_name: lucidreview-hapi-fhir
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_CONFIG_LOCATION: /app/config/application.yaml
+    volumes:
+      - ./docker/hapi-fhir/application.yaml:/app/config/application.yaml:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/fhir/metadata"]
+      interval: 20s
+      timeout: 15s
+      retries: 15
+      start_period: 90s
+    restart: unless-stopped
+
+  # ── 3. NLP Service (medspacy stand-in for cTAKES) ───────────
+  ctakes:
+    build:
+      context: ./docker/ctakes
+      dockerfile: Dockerfile
+    container_name: lucidreview-ctakes
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── 4. MySQL 8.0 (Application State DB) ─────────────────────
+  # Note: Port 13306 matches the RDS bastion tunnel convention.
+  # In production, the backend connects to RDS directly (no port mapping).
+  mysql:
+    image: mysql:8.0
+    container_name: lucidreview-mysql
+    ports:
+      - "13306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev}
+      MYSQL_DATABASE: lucidreview
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --max-allowed-packet=128M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── 5. Redis 7 (Agent Run Queue + Cache) ────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: lucidreview-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ── 6. Reviewer UI (Vite Dev Server) ────────────────────────
+  reviewer-ui:
+    build:
+      context: .
+      dockerfile: packages/reviewer-ui/Dockerfile.dev
+    container_name: lucidreview-ui
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3000
+    volumes:
+      - ./packages/reviewer-ui:/app/packages/reviewer-ui:cached
+      - /app/packages/reviewer-ui/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

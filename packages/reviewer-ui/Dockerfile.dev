@@ -1,0 +1,11 @@
+FROM node:22-slim
+WORKDIR /app
+RUN npm install -g pnpm
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/reviewer-ui/package.json ./packages/reviewer-ui/
+RUN pnpm install --frozen-lockfile
+COPY packages/shared ./packages/shared
+COPY packages/reviewer-ui ./packages/reviewer-ui
+EXPOSE 5173
+CMD ["pnpm", "--filter", "@lucidreview/reviewer-ui", "dev", "--", "--host", "0.0.0.0"]

@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@lucidreview/shared": ["../shared/dist/index.d.ts"],
+      "@lucidreview/mcp-server": ["../mcp-server/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "src/__tests__"]
+}

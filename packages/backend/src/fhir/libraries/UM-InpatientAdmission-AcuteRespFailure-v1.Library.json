@@ -1,0 +1,115 @@
+{
+  "resourceType": "Library",
+  "id": "UM_InpatientAdmission_AcuteRespFailure",
+  "url": "http://lucidreview.dev/Library/UM_InpatientAdmission_AcuteRespFailure",
+  "name": "UM_InpatientAdmission_AcuteRespFailure",
+  "title": "Acute Respiratory Failure Inpatient Admission Criteria",
+  "version": "1.0.0",
+  "status": "active",
+  "experimental": false,
+  "type": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/library-type",
+        "code": "logic-library",
+        "display": "Logic Library"
+      }
+    ]
+  },
+  "description": "CQL library evaluating inpatient admission criteria for acute respiratory failure (J96.0x). Checks for active respiratory failure diagnosis and hypoxia evidence (SpO2 < 90% or pO2 < 60 mmHg) within 6 hours.",
+  "purpose": "Utilization management criteria evaluation for prior authorization of inpatient admissions due to acute respiratory failure.",
+  "relatedArtifact": [
+    {
+      "type": "depends-on",
+      "display": "FHIR Helpers",
+      "resource": "http://fhir.org/guides/cqf/common/Library/FHIRHelpers|4.0.1"
+    }
+  ],
+  "parameter": [
+    {
+      "name": "Measurement Period",
+      "use": "in",
+      "min": 0,
+      "max": "1",
+      "type": "Period"
+    },
+    {
+      "name": "Patient",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "Patient"
+    },
+    {
+      "name": "AdmissionCriteriaMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "DiagnosisMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "HypoxiaMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "MissingHypoxiaData",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    }
+  ],
+  "dataRequirement": [
+    {
+      "type": "Condition",
+      "codeFilter": [
+        {
+          "path": "code",
+          "code": [
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "J96.00" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "J96.01" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "J96.02" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Observation",
+      "codeFilter": [
+        {
+          "path": "code",
+          "code": [
+            { "system": "http://loinc.org", "code": "59408-5" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Observation",
+      "codeFilter": [
+        {
+          "path": "code",
+          "code": [
+            { "system": "http://loinc.org", "code": "2703-7" }
+          ]
+        }
+      ]
+    }
+  ],
+  "content": [
+    {
+      "contentType": "text/cql",
+      "data": "bGlicmFyeSBVTV9JbnBhdGllbnRBZG1pc3Npb25fQWN1dGVSZXNwRmFpbHVyZSB2ZXJzaW9uICcxLjAuMCcKCnVzaW5nIEZISVIgdmVyc2lvbiAnNC4wLjEnCmluY2x1ZGUgRkhJUkhlbHBlcnMgdmVyc2lvbiAnNC4wLjEnIGNhbGxlZCBGSElSSGVscGVycwoKY29kZXN5c3RlbSAiSUNEMTBDTSI6ICdodHRwOi8vaGw3Lm9yZy9maGlyL3NpZC9pY2QtMTAtY20nCmNvZGVzeXN0ZW0gIkxPSU5DIjogJ2h0dHA6Ly9sb2luYy5vcmcnCgp2YWx1ZXNldCAiQWN1dGUgUmVzcGlyYXRvcnkgRmFpbHVyZSBEaWFnbm9zZXMiOiAnaHR0cDovL2x1Y2lkcmV2aWV3LmRldi9WYWx1ZVNldC9hY3V0ZS1yZXNwaXJhdG9yeS1mYWlsdXJlJwoKY29kZSAiQWN1dGUgcmVzcGlyYXRvcnkgZmFpbHVyZSwgdW5zcGVjaWZpZWQiOiAnSjk2LjAwJyBmcm9tICJJQ0QxMENNIgpjb2RlICJBY3V0ZSByZXNwaXJhdG9yeSBmYWlsdXJlIHdpdGggaHlwb3hpYSI6ICdKOTYuMDEnIGZyb20gIklDRDEwQ00iCmNvZGUgIkFjdXRlIHJlc3BpcmF0b3J5IGZhaWx1cmUgd2l0aCBoeXBlcmNhcG5pYSI6ICdKOTYuMDInIGZyb20gIklDRDEwQ00iCmNvZGUgIlNwTzIgYnkgcHVsc2Ugb3giOiAnNTk0MDgtNScgZnJvbSAiTE9JTkMiCmNvZGUgIkFydGVyaWFsIHBPMiI6ICcyNzAzLTcnIGZyb20gIkxPSU5DIgoKcGFyYW1ldGVyICJNZWFzdXJlbWVudCBQZXJpb2QiIEludGVydmFsPERhdGVUaW1lPgogIGRlZmF1bHQgSW50ZXJ2YWxbQDIwMjYtMDEtMDFUMDA6MDA6MDAuMCwgQDIwMjYtMTItMzFUMjM6NTk6NTkuMF0KCmNvbnRleHQgUGF0aWVudAoKZGVmaW5lICJBY3V0ZSBSZXNwaXJhdG9yeSBGYWlsdXJlIENvbmRpdGlvbiBDb2RlcyI6CiAgeyAiQWN1dGUgcmVzcGlyYXRvcnkgZmFpbHVyZSwgdW5zcGVjaWZpZWQiLAogICAgIkFjdXRlIHJlc3BpcmF0b3J5IGZhaWx1cmUgd2l0aCBoeXBveGlhIiwKICAgICJBY3V0ZSByZXNwaXJhdG9yeSBmYWlsdXJlIHdpdGggaHlwZXJjYXBuaWEiIH0KCmRlZmluZSAiSGFzIEFjdXRlIFJlc3BpcmF0b3J5IEZhaWx1cmUgRGlhZ25vc2lzIjoKICBleGlzdHMgKAogICAgW0NvbmRpdGlvbl0gQwogICAgICB3aGVyZSBDLmNvZGUuY29kaW5nLmNvZGUgaW4geyAnSjk2LjAwJywgJ0o5Ni4wMScsICdKOTYuMDInIH0KICAgICAgICBhbmQgQy5jbGluaWNhbFN0YXR1cy5jb2RpbmcuY29kZSBpbiB7ICdhY3RpdmUnLCAncmVjdXJyZW5jZScsICdyZWxhcHNlJyB9CiAgKQoKZGVmaW5lICJSZWNlbnQgU3BPMiBPYnNlcnZhdGlvbnMiOgogIFtPYnNlcnZhdGlvbjogIlNwTzIgYnkgcHVsc2Ugb3giXSBPCiAgICB3aGVyZSBPLnN0YXR1cyBpbiB7ICdmaW5hbCcsICdhbWVuZGVkJywgJ2NvcnJlY3RlZCcgfQogICAgICBhbmQgTy5lZmZlY3RpdmUgaXMgbm90IG51bGwKICAgICAgYW5kIChPLmVmZmVjdGl2ZSBhcyBkYXRlVGltZSkgPj0gKE5vdygpIC0gNiBob3VycykKCmRlZmluZSAiSGFzIExvdyBTcE8yIFdpdGhpbiA2IEhvdXJzIjoKICBleGlzdHMgKAogICAgIlJlY2VudCBTcE8yIE9ic2VydmF0aW9ucyIgTwogICAgICB3aGVyZSAoTy52YWx1ZSBhcyBRdWFudGl0eSkudmFsdWUgPCA5MAogICkKCmRlZmluZSAiUmVjZW50IHBPMiBPYnNlcnZhdGlvbnMiOgogIFtPYnNlcnZhdGlvbjogIkFydGVyaWFsIHBPMiJdIE8KICAgIHdoZXJlIE8uc3RhdHVzIGluIHsgJ2ZpbmFsJywgJ2FtZW5kZWQnLCAnY29ycmVjdGVkJyB9CiAgICAgIGFuZCBPLmVmZmVjdGl2ZSBpcyBub3QgbnVsbAogICAgICBhbmQgKE8uZWZmZWN0aXZlIGFzIGRhdGVUaW1lKSA+PSAoTm93KCkgLSA2IGhvdXJzKQoKZGVmaW5lICJIYXMgTG93IEFydGVyaWFsIHBPMiBXaXRoaW4gNiBIb3VycyI6CiAgZXhpc3RzICgKICAgICJSZWNlbnQgcE8yIE9ic2VydmF0aW9ucyIgTwogICAgICB3aGVyZSAoTy52YWx1ZSBhcyBRdWFudGl0eSkudmFsdWUgPCA2MAogICkKCmRlZmluZSAiTWVldHMgSHlwb3hpYSBDcml0ZXJpb24iOgogICJIYXMgTG93IFNwTzIgV2l0aGluIDYgSG91cnMiIG9yICJIYXMgTG93IEFydGVyaWFsIHBPMiBXaXRoaW4gNiBIb3VycyIKCmRlZmluZSAiQWRtaXNzaW9uQ3JpdGVyaWFNZXQiOgogICJIYXMgQWN1dGUgUmVzcGlyYXRvcnkgRmFpbHVyZSBEaWFnbm9zaXMiIGFuZCAiTWVldHMgSHlwb3hpYSBDcml0ZXJpb24iCgpkZWZpbmUgIkRpYWdub3Npc01ldCI6CiAgIkhhcyBBY3V0ZSBSZXNwaXJhdG9yeSBGYWlsdXJlIERpYWdub3NpcyIKCmRlZmluZSAiSHlwb3hpYU1ldCI6CiAgIk1lZXRzIEh5cG94aWEgQ3JpdGVyaW9uIgoKZGVmaW5lICJNaXNzaW5nSHlwb3hpYURhdGEiOgogICJIYXMgQWN1dGUgUmVzcGlyYXRvcnkgRmFpbHVyZSBEaWFnbm9zaXMiIGFuZCBub3QgIk1lZXRzIEh5cG94aWEgQ3JpdGVyaW9uIgogICAgYW5kIG5vdCBleGlzdHMgKCJSZWNlbnQgU3BPMiBPYnNlcnZhdGlvbnMiKQogICAgYW5kIG5vdCBleGlzdHMgKCJSZWNlbnQgcE8yIE9ic2VydmF0aW9ucyIpCg=="
+    }
+  ]
+}

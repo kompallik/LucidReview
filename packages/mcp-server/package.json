@@ -1,0 +1,29 @@
+{
+  "name": "@lucidreview/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm",
+    "dev": "tsup src/index.ts --format esm --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@lucidreview/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@aws-sdk/client-textract": "^3.817.0",
+    "@types/fhir": "^0.0.39",
+    "pdf-parse": "^1.1.1",
+    "mysql2": "^3.14.0",
+    "undici": "^7.10.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@types/pdf-parse": "^1.1.4",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}
