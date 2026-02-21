@@ -2,8 +2,26 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Play, RotateCcw, CheckCircle2, Circle, Loader2, AlertCircle,
   ChevronDown, ChevronRight, Activity, FlaskConical, Stethoscope,
-  FileText, Shield, Cpu, XCircle, HelpCircle,
+  FileText, Shield, Cpu, XCircle, HelpCircle, ExternalLink, BookOpen,
 } from 'lucide-react';
+
+const HAPI_FHIR_URL = 'http://localhost:8080/fhir';
+
+/** Extract FHIR resource references (e.g. "Observation/abc123") from free text */
+function extractFhirRefs(text: string): Array<{ ref: string; url: string }> {
+  const pattern = /\b(Observation|Condition|Patient|Procedure|MedicationRequest|DiagnosticReport|DocumentReference|Encounter|Coverage)\/([A-Za-z0-9\-]+)\b/g;
+  const refs: Array<{ ref: string; url: string }> = [];
+  const seen = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(text)) !== null) {
+    const ref = m[0];
+    if (!seen.has(ref)) {
+      seen.add(ref);
+      refs.push({ ref, url: `${HAPI_FHIR_URL}/${ref}` });
+    }
+  }
+  return refs;
+}
 import type { TreeNode, CriterionState } from '../components/CriteriaTreeView';
 import { api } from '../api/client';
 import type { AgentToolCall } from '../api/client';
@@ -179,20 +197,27 @@ function evaluateNode(
 function AutoTreeNode({
   node,
   states,
+  evidence,
   depth = 0,
   activeLeafIds,
 }: {
   node: TreeNode;
   states: Map<string, CriterionState>;
+  evidence: Map<string, string>;
   depth?: number;
   activeLeafIds: Set<string>;
 }) {
   const [expanded, setExpanded] = useState(true);
+  const [showEvidence, setShowEvidence] = useState(false);
   const result = evaluateNode(node, states);
   const isActive = node.type === 'LEAF' && activeLeafIds.has(node.id);
 
   if (node.type === 'LEAF') {
     const s = states.get(node.id) ?? 'unknown';
+    const ev = evidence.get(node.id) ?? '';
+    const fhirRefs = ev ? extractFhirRefs(ev) : [];
+    const hasEvidence = s !== 'unknown' && ev;
+
     const border =
       s === 'met'     ? 'border-l-emerald-500' :
       s === 'not_met' ? 'border-l-red-400'     :
@@ -213,33 +238,91 @@ function AutoTreeNode({
       <div className={`${depth > 0 ? 'ml-4' : ''} relative mb-1.5`}>
         {depth > 0 && <div className="absolute -left-2 top-0 bottom-0 w-px bg-slate-200" />}
         {depth > 0 && <div className="absolute -left-2 top-4 w-2 h-px bg-slate-200" />}
-        <div
-          className={`rounded-lg border border-slate-100 border-l-4 ${border} ${bg} px-3 py-2 flex items-start gap-2 transition-all duration-300`}
-        >
-          <div className="mt-0.5">{icon}</div>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {node.dataType && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] bg-slate-100 text-slate-500 rounded px-1 py-0.5">
-                  {DATA_TYPE_ICON[node.dataType]}
+        <div className={`rounded-lg border border-slate-100 border-l-4 ${border} ${bg} transition-all duration-300 overflow-hidden`}>
+          {/* Main row */}
+          <div className="px-3 py-2 flex items-start gap-2">
+            <div className="mt-0.5">{icon}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {node.dataType && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] bg-slate-100 text-slate-500 rounded px-1 py-0.5">
+                    {DATA_TYPE_ICON[node.dataType]}
+                  </span>
+                )}
+                <span className="text-xs font-medium text-slate-800">{node.label}</span>
+              </div>
+              {node.threshold && (
+                <span className="inline-block mt-0.5 text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">
+                  {node.threshold.display ??
+                    `${node.threshold.operator} ${
+                      Array.isArray(node.threshold.value)
+                        ? node.threshold.value.join(', ')
+                        : String(node.threshold.value ?? '')
+                    }${node.threshold.unit ? ' ' + node.threshold.unit : ''}`}
                 </span>
               )}
-              <span className="text-xs font-medium text-slate-800">{node.label}</span>
+              {isActive && s === 'unknown' && (
+                <p className="text-[10px] text-blue-500 mt-0.5 animate-pulse">Evaluating...</p>
+              )}
             </div>
-            {node.threshold && (
-              <span className="inline-block mt-0.5 text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">
-                {node.threshold.display ??
-                  `${node.threshold.operator} ${
-                    Array.isArray(node.threshold.value)
-                      ? node.threshold.value.join(', ')
-                      : String(node.threshold.value ?? '')
-                  }${node.threshold.unit ? ' ' + node.threshold.unit : ''}`}
-              </span>
-            )}
-            {isActive && s === 'unknown' && (
-              <p className="text-[10px] text-blue-500 mt-0.5 animate-pulse">Evaluating...</p>
+            {/* Evidence toggle — only shown once criteria is resolved */}
+            {hasEvidence && (
+              <button
+                type="button"
+                onClick={() => setShowEvidence(v => !v)}
+                className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium border transition-colors ${
+                  showEvidence
+                    ? 'bg-slate-700 text-white border-slate-700'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700'
+                }`}
+                title="View evidence"
+              >
+                <BookOpen size={10} />
+                Evidence
+                {fhirRefs.length > 0 && (
+                  <span className={`rounded-full px-1 text-[9px] font-bold ${showEvidence ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600'}`}>
+                    {fhirRefs.length}
+                  </span>
+                )}
+              </button>
             )}
           </div>
+
+          {/* Evidence panel — expands inline */}
+          {hasEvidence && showEvidence && (
+            <div className={`mx-3 mb-2.5 rounded-lg border p-3 text-xs ${
+              s === 'met' ? 'border-emerald-200 bg-emerald-50/80' : 'border-red-200 bg-red-50/80'
+            }`}>
+              <p className={`font-semibold mb-1.5 ${s === 'met' ? 'text-emerald-800' : 'text-red-700'}`}>
+                Clinical Evidence
+              </p>
+              {/* Evidence text */}
+              <p className="text-slate-600 leading-relaxed mb-2">{ev}</p>
+
+              {/* FHIR resource links */}
+              {fhirRefs.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    FHIR Resources
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {fhirRefs.map(({ ref, url }) => (
+                      <a
+                        key={ref}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md bg-white border border-blue-200 px-2 py-0.5 text-[11px] font-mono text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors"
+                      >
+                        <ExternalLink size={9} />
+                        {ref}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -294,6 +377,7 @@ function AutoTreeNode({
               key={c.id}
               node={c}
               states={states}
+              evidence={evidence}
               depth={depth + 1}
               activeLeafIds={activeLeafIds}
             />
@@ -330,6 +414,7 @@ export default function CaseReview() {
   const [log, setLog] = useState<LogEntry[]>([]);
   const [treeResults, setTreeResults] = useState<TreeResult[]>([]);
   const [criteriaStates, setCriteriaStates] = useState<Map<string, CriterionState>>(new Map());
+  const [criteriaEvidence, setCriteriaEvidence] = useState<Map<string, string>>(new Map());
   const [activeLeafIds, setActiveLeafIds] = useState<Set<string>>(new Set());
   const [runId, setRunId] = useState<string | null>(null);
   const [determination, setDetermination] = useState<string | null>(null);
@@ -397,12 +482,17 @@ export default function CaseReview() {
           setConfidence(det.confidence ?? 0);
 
           const newStates = new Map<string, CriterionState>();
+          const newEvidence = new Map<string, string>();
           for (const cr of det.criteriaResults ?? []) {
             const leafIds = mapCriterionToLeafIds(cr.name ?? '');
             const state: CriterionState =
               cr.result === 'MET' ? 'met' : cr.result === 'NOT_MET' ? 'not_met' : 'unknown';
+            const ev: string = (cr as Record<string, unknown>).evidence as string ?? '';
             for (const lid of leafIds) {
-              if (treeLeafIds.includes(lid)) newStates.set(lid, state);
+              if (treeLeafIds.includes(lid)) {
+                newStates.set(lid, state);
+                if (ev) newEvidence.set(lid, ev);
+              }
             }
           }
           // If AUTO_APPROVE, mark all remaining unknown leaves as met
@@ -412,6 +502,7 @@ export default function CaseReview() {
             }
           }
           setCriteriaStates(newStates);
+          setCriteriaEvidence(newEvidence);
           setActiveLeafIds(new Set());
         } catch {
           // ignore parse errors
@@ -456,6 +547,7 @@ export default function CaseReview() {
     setLog([]);
     setTreeResults([]);
     setCriteriaStates(new Map());
+    setCriteriaEvidence(new Map());
     setActiveLeafIds(new Set());
     setRunId(null);
     setDetermination(null);
@@ -562,6 +654,7 @@ export default function CaseReview() {
     setLog([]);
     setTreeResults([]);
     setCriteriaStates(new Map());
+    setCriteriaEvidence(new Map());
     setActiveLeafIds(new Set());
     setRunId(null);
     setDetermination(null);
@@ -806,6 +899,7 @@ export default function CaseReview() {
                     <AutoTreeNode
                       node={result.tree}
                       states={criteriaStates}
+                      evidence={criteriaEvidence}
                       activeLeafIds={activeLeafIds}
                     />
                   </div>
