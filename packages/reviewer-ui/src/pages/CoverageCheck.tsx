@@ -160,7 +160,7 @@ export default function CoverageCheck() {
             {results.length} criteria set{results.length !== 1 ? 's' : ''} found
           </p>
           {results.map((result, i) => (
-            <div key={i} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <div key={`${i}-${icd10}-${cpt}`} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
               <div className="mb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   {result.criteriaSet.title}
