@@ -122,7 +122,9 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '';
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('lucidreview_token');
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // Only set Content-Type when there is a body — Fastify rejects
+    // Content-Type: application/json with an empty body (400 FST_ERR_CTP_EMPTY_JSON_BODY)
+    ...(options?.body != null ? { 'Content-Type': 'application/json' } : {}),
     ...options?.headers as Record<string, string>,
   };
   if (token) {
