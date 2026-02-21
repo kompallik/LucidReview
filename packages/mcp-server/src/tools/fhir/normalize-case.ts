@@ -60,7 +60,7 @@ export function registerNormalizeCase(
           nlpEntities as NlpEntity[],
           patientRef,
           encounterId,
-          'DocumentReference/nlp-source',
+          'NLP Extraction (medspacy)',
         );
         bundle.entry = [...(bundle.entry ?? []), ...nlpEntries];
       }

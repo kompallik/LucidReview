@@ -475,7 +475,9 @@ export class DefaultUmToFhirAdapter implements UmToFhirAdapter {
         entity: [
           {
             role: 'source',
-            what: { reference: documentRef },
+            // Use display-only reference so HAPI FHIR doesn't try to resolve
+            // the source document URL — avoids HAPI-1094 provenance reference error
+            what: { display: documentRef },
           },
         ],
       };
