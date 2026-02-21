@@ -5,6 +5,7 @@ import Login from './pages/Login.tsx';
 import ReviewQueue from './pages/ReviewQueue.tsx';
 import ReviewDetail from './pages/ReviewDetail.tsx';
 import PolicyBrowser from './pages/PolicyBrowser.tsx';
+import CoverageCheck from './pages/CoverageCheck.tsx';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="reviews" element={<ReviewQueue />} />
           <Route path="reviews/:caseNumber" element={<ReviewDetail />} />
           <Route path="policies" element={<PolicyBrowser />} />
+          <Route path="coverage-check" element={<CoverageCheck />} />
         </Route>
       </Routes>
     </ToastProvider>

@@ -16,6 +16,7 @@ import authRoutes from './routes/auth.js';
 import crdRoutes from './routes/crd.js';
 import dtrRoutes from './routes/dtr.js';
 import pasRoutes from './routes/pas.js';
+import criteriaTreeRoutes from './routes/criteria-tree.js';
 
 async function appPlugin(app: FastifyInstance) {
   // Security headers
@@ -68,6 +69,7 @@ async function appPlugin(app: FastifyInstance) {
   await app.register(crdRoutes);
   await app.register(dtrRoutes);
   await app.register(pasRoutes);
+  await app.register(criteriaTreeRoutes);
 
   // Global error handler
   app.setErrorHandler((err: FastifyError, _request: FastifyRequest, reply: FastifyReply) => {

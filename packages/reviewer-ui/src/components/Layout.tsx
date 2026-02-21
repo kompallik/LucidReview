@@ -1,11 +1,12 @@
 import { Outlet, NavLink, Navigate, useLocation, useNavigate } from 'react-router';
-import { ClipboardList, BookOpen, Activity, User, LogOut } from 'lucide-react';
+import { ClipboardList, BookOpen, Activity, User, LogOut, SearchCheck } from 'lucide-react';
 import { cn } from '../lib/cn.ts';
 import { isAuthenticated, getUser, logout } from '../pages/Login.tsx';
 
 const NAV_ITEMS = [
   { to: '/reviews', label: 'Reviews', icon: ClipboardList },
   { to: '/policies', label: 'Policies', icon: BookOpen },
+  { to: '/coverage-check', label: 'Coverage Check', icon: SearchCheck },
 ];
 
 function Breadcrumb() {
