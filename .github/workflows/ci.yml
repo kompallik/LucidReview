@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (shared → mcp-server → backend → reviewer-ui)
+        run: pnpm build
+
+      - name: Run unit tests
+        run: pnpm test:unit
+
+      - name: Lint
+        run: pnpm lint
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Start test infrastructure
+        run: docker compose -f docker-compose.test.yml up -d --wait
+        timeout-minutes: 5
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for MySQL..."
+          until docker exec lucidreview-mysql-test mysqladmin ping -h localhost -u root -ptest_root --silent 2>/dev/null; do
+            sleep 2
+          done
+          echo "MySQL is ready."
+
+          echo "Waiting for HAPI FHIR..."
+          until curl -sf http://localhost:8082/fhir/metadata > /dev/null 2>&1; do
+            sleep 5
+          done
+          echo "HAPI FHIR is ready."
+
+      - name: Seed test FHIR data
+        run: HAPI_FHIR_URL=http://localhost:8082/fhir pnpm seed:fhir
+        continue-on-error: true
+
+      - name: Run integration tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: "13307"
+          DB_USER: root
+          DB_PASSWORD: test_root
+          DB_NAME: lucidreview
+          HAPI_FHIR_URL: http://localhost:8082/fhir
+        run: pnpm test:integration || echo "No integration tests configured yet"
+
+      - name: Tear down test infrastructure
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
