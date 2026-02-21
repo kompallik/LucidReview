@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { Activity, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export function isAuthenticated(): boolean {
   return localStorage.getItem('lucidreview_token') !== null;
@@ -62,9 +62,7 @@ export default function Login() {
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         {/* Logo */}
         <div className="mb-6 flex flex-col items-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
-            <Activity size={24} strokeWidth={2.5} />
-          </div>
+          <img src="/favicon.png" alt="LucidReview" className="mb-3 h-14 w-14 rounded-xl object-cover shadow-sm" />
           <h1 className="text-lg font-semibold text-slate-900">LucidReview</h1>
           <p className="text-xs text-slate-500">UM Criteria Engine</p>
         </div>

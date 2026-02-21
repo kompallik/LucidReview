@@ -1,5 +1,5 @@
 import { Outlet, NavLink, Navigate, useLocation, useNavigate } from 'react-router';
-import { ClipboardList, BookOpen, Activity, User, LogOut, SearchCheck, Stethoscope } from 'lucide-react';
+import { ClipboardList, BookOpen, User, LogOut, SearchCheck, Stethoscope } from 'lucide-react';
 import { cn } from '../lib/cn.ts';
 import { isAuthenticated, getUser, logout } from '../pages/Login.tsx';
 
@@ -48,9 +48,7 @@ export default function Layout() {
       <aside className="flex w-56 flex-col border-r border-slate-200 bg-white">
         {/* Logo */}
         <div className="flex items-center gap-2.5 border-b border-slate-200 px-5 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <Activity size={18} strokeWidth={2.5} />
-          </div>
+          <img src="/favicon.png" alt="LucidReview" className="h-8 w-8 rounded-lg object-cover" />
           <div>
             <div className="text-sm font-semibold text-slate-900">LucidReview</div>
             <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">UM Criteria Engine</div>
