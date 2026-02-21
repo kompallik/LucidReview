@@ -16,8 +16,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: test_root
       MYSQL_DATABASE: lucidreview
-    volumes:
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    # No init SQL — schema is created via Knex migrations in CI
     tmpfs:
       - /var/lib/mysql
     command: >
@@ -34,22 +33,14 @@ services:
       retries: 20
       start_period: 15s
 
-  hapi-fhir-test:
-    image: hapiproject/hapi:latest
-    container_name: lucidreview-hapi-fhir-test
-    ports:
-      - "8082:8080"
-    environment:
-      SPRING_CONFIG_LOCATION: /app/config/application.yaml
-      # Override datasource to use in-memory H2 instead of MySQL
-      SPRING_DATASOURCE_URL: "jdbc:h2:mem:hapi_fhir;DB_CLOSE_DELAY=-1"
-      SPRING_DATASOURCE_DRIVERCLASSNAME: org.h2.Driver
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirH2Dialect
-    volumes:
-      - ./docker/hapi-fhir/application.yaml:/app/config/application.yaml:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/fhir/metadata"]
-      interval: 10s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
+  # HAPI FHIR is omitted from the CI test stack — the backend integration tests
+  # only require MySQL. HAPI FHIR is available in the full dev stack (docker-compose.yml)
+  # and can be started separately with: docker compose up hapi-fhir
+  #
+  # hapi-fhir-test:  (disabled — too heavy for GitHub Actions runners)
+  #   image: hapiproject/hapi:latest
+  #   mem_limit: 1500m
+  #   environment:
+  #     JAVA_OPTS: "-Xms256m -Xmx1200m"
+  #     SPRING_DATASOURCE_URL: "jdbc:h2:mem:hapi_fhir;DB_CLOSE_DELAY=-1"
+  #   ports: ["8082:8080"]

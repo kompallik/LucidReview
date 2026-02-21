@@ -93,27 +93,26 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Start test infrastructure
+      - name: Start test infrastructure (MySQL only)
         run: docker compose -f docker-compose.test.yml up -d --wait
-        timeout-minutes: 5
+        timeout-minutes: 3
 
-      - name: Wait for services to be healthy
+      - name: Wait for MySQL to be ready
         run: |
           echo "Waiting for MySQL..."
           until docker exec lucidreview-mysql-test mysqladmin ping -h localhost -u root -ptest_root --silent 2>/dev/null; do
             sleep 2
           done
-          echo "MySQL is ready."
+          echo "MySQL ready."
 
-          echo "Waiting for HAPI FHIR..."
-          until curl -sf http://localhost:8082/fhir/metadata > /dev/null 2>&1; do
-            sleep 5
-          done
-          echo "HAPI FHIR is ready."
-
-      - name: Seed test FHIR data
-        run: HAPI_FHIR_URL=http://localhost:8082/fhir pnpm seed:fhir
-        continue-on-error: true
+      - name: Run Knex migrations
+        env:
+          DB_HOST: localhost
+          DB_PORT: "13307"
+          DB_USER: root
+          DB_PASSWORD: test_root
+          DB_NAME: lucidreview
+        run: pnpm migrate
 
       - name: Run integration tests
         env:
@@ -122,8 +121,13 @@ jobs:
           DB_USER: root
           DB_PASSWORD: test_root
           DB_NAME: lucidreview
-          HAPI_FHIR_URL: http://localhost:8082/fhir
-        run: pnpm test:integration || echo "No integration tests configured yet"
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: "13307"
+          TEST_DB_USER: root
+          TEST_DB_PASSWORD: test_root
+          TEST_DB_NAME: lucidreview
+          JWT_SECRET: lucidreview-dev-secret-change-in-prod
+        run: pnpm test:integration
 
       - name: Tear down test infrastructure
         if: always()
