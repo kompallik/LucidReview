@@ -794,12 +794,28 @@ async function processItems<T>(
   idLabel: (item: T) => string,
   db: ReturnType<typeof getDb> | null,
   dryRun: boolean,
+  cmsIdFn?: (item: T) => string,  // optional: returns cms_id to pre-check DB before calling Claude
 ): Promise<{ created: number; updated: number; skipped: number; errors: number }> {
   let created = 0, updated = 0, skipped = 0, errors = 0;
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i]!;
     const progress = `[${String(i + 1).padStart(String(items.length).length, ' ')}/${items.length}]`;
+
+    // Pre-check: if a cms_id lookup function is provided and the DB already has
+    // an ACTIVE policy with that cms_id, skip without calling Claude (saves API cost)
+    if (!dryRun && db && cmsIdFn) {
+      const cmsId = cmsIdFn(item);
+      const existing = await (db as unknown as ReturnType<typeof getDb>)('policies')
+        .where({ cms_id: cmsId, status: 'ACTIVE' }).first();
+      if (existing) {
+        console.log(`${progress} ${label} ${idLabel(item)}`);
+        console.log(`         DB: skipped (already ACTIVE)\n`);
+        skipped++;
+        continue;
+      }
+    }
+
     console.log(`${progress} ${label} ${idLabel(item)}`);
 
     const criteria = await generateFn(item);
@@ -883,7 +899,8 @@ async function main(): Promise<void> {
       const r = await processItems('NCD', ncds, generateCriteriaWithClaude,
         (d, ncd, c) => upsertNcdToDb(d, ncd, c),
         n => `${n.NCD_mnl_sect} — ${n.NCD_mnl_sect_title}`,
-        db, dryRun);
+        db, dryRun,
+        n => n.NCD_mnl_sect);  // pre-check cms_id before calling Claude
       created += r.created; updated += r.updated; skipped += r.skipped; errors += r.errors;
     }
   }
@@ -904,7 +921,8 @@ async function main(): Promise<void> {
       const r = await processItems('LCD', lcds, generateCriteriaForLcd,
         (d, lcd, c) => upsertLcdToDb(d, lcd, c),
         l => `L${l.lcd_id} — ${l.title}`,
-        db, dryRun);
+        db, dryRun,
+        l => `L${l.lcd_id}`);  // pre-check cms_id before calling Claude
       created += r.created; updated += r.updated; skipped += r.skipped; errors += r.errors;
     }
   }
