@@ -15,6 +15,22 @@ const policyObjectSchema = {
   },
 };
 
+/** Serialize a raw DB policies row to camelCase for the frontend. */
+function serializePolicy(row: Record<string, unknown>): Record<string, unknown> {
+  const d = (v: unknown) =>
+    v instanceof Date ? v.toISOString().slice(0, 10) : (v ?? null);
+  return {
+    id: row['id'],
+    policyType: row['policy_type'],
+    cmsId: row['cms_id'] ?? null,
+    title: row['title'],
+    status: row['status'],
+    effectiveDate: d(row['effective_date']),
+    retirementDate: d(row['retirement_date']),
+    sourceUrl: row['source_url'] ?? null,
+  };
+}
+
 export default async function policiesRoutes(app: FastifyInstance) {
   // GET /api/policies — list all policies
   app.get(
@@ -35,15 +51,8 @@ export default async function policiesRoutes(app: FastifyInstance) {
       },
     },
     async (_request, reply) => {
-      const policies = await db('policies').select(
-        'id',
-        'policy_type',
-        'cms_id',
-        'title',
-        'status',
-        'effective_date',
-      );
-      return reply.send(policies);
+      const policies = await db('policies').select('*').orderBy('policy_type').orderBy('cms_id');
+      return reply.send(policies.map(serializePolicy));
     },
   );
 
@@ -78,15 +87,13 @@ export default async function policiesRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { id } = request.params;
-      const policy = await db('policies')
-        .where({ id })
-        .first();
+      const policy = await db('policies').where({ id }).first();
 
       if (!policy) {
         return reply.status(404).send({ error: 'Policy not found' });
       }
 
-      return reply.send(policy);
+      return reply.send(serializePolicy(policy));
     },
   );
 }

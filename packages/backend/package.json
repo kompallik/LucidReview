@@ -11,7 +11,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "migrate": "knex --knexfile src/db/knexfile.ts migrate:latest",
     "migrate:make": "knex --knexfile src/db/knexfile.ts migrate:make",
-    "ingest:cms": "tsx ../../scripts/ingest-cms-policies.ts"
+    "ingest:cms": "tsx ../../scripts/ingest-cms-policies.ts",
+    "generate:criteria": "tsx ../../scripts/generate-criteria-from-cms.ts"
   },
   "dependencies": {
     "@lucidreview/shared": "workspace:*",
