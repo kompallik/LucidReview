@@ -106,6 +106,23 @@ interface CriteriaResult {
   summary: string;
 }
 
+interface LcdRow {
+  lcd_id: string;
+  lcd_version: string;
+  title: string;
+  determination_number: string;
+  orig_det_eff_date: string;
+  ent_det_end_date: string;
+  rev_eff_date: string;
+  indication: string;
+  coding_guidelines: string;
+  doc_reqs: string;
+  keywords: string;
+  status: string;
+  date_retired: string;
+  [key: string]: string;
+}
+
 // ---------------------------------------------------------------------------
 // Zip extraction via python3 (no adm-zip dependency needed)
 // ---------------------------------------------------------------------------
@@ -389,18 +406,20 @@ function getBedrockClient() {
   return { client: _bedrockClient, ConverseCommand: _ConverseCommand };
 }
 
-async function generateCriteriaWithClaude(ncd: NcdRow): Promise<CriteriaResult | null> {
-  const { client: bedrockClient, ConverseCommand } = getBedrockClient();
+/** Build the Claude prompt shared by both NCD and LCD generation. */
+function buildClaudePrompt(
+  policyLabel: string,
+  cmsId: string,
+  keywords: string,
+  effectiveDate: string,
+  clinicalText: string,
+): string {
+  return `You are a clinical coverage criteria expert. Convert this Medicare policy into a structured criteria decision tree for automated prior authorization review.
 
-  // Increase input budget to 4500 chars to capture full policy text for longer NCDs.
-  // Cap at 4500 to leave sufficient room for the structured JSON output within 8192 tokens.
-  const clinicalText = stripHtml(ncd.indctn_lmtn || ncd.itm_srvc_desc).slice(0, 4500);
-
-  const prompt = `You are a clinical coverage criteria expert. Convert this Medicare NCD policy into a structured criteria decision tree for automated prior authorization review.
-
-POLICY: ${ncd.NCD_mnl_sect_title} (NCD Section ${ncd.NCD_mnl_sect})
-EFFECTIVE: ${ncd.NCD_efctv_dt?.slice(0, 10) ?? 'unknown'}
-KEYWORDS: ${ncd.ncd_keyword ?? ''}
+POLICY: ${policyLabel}
+CMS ID: ${cmsId}
+EFFECTIVE: ${effectiveDate || 'unknown'}
+KEYWORDS: ${keywords}
 
 POLICY TEXT:
 ${clinicalText}
@@ -430,7 +449,11 @@ Rules for dslJson:
 5. "summary": 1-2 sentence plain English summary of when this service is covered under Medicare.
 
 Respond with ONLY valid JSON. No explanation, no markdown code blocks, no surrounding text.`;
+}
 
+/** Call Bedrock with a prompt and parse the CriteriaResult JSON. */
+async function callClaude(prompt: string): Promise<CriteriaResult | null> {
+  const { client: bedrockClient, ConverseCommand } = getBedrockClient();
   try {
     const response = await bedrockClient.send(
       new ConverseCommand({
@@ -441,11 +464,9 @@ Respond with ONLY valid JSON. No explanation, no markdown code blocks, no surrou
     );
 
     const text: string = response.output?.message?.content?.[0]?.text ?? '';
-
-    // Extract JSON — handle any accidental markdown wrapping
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error(`  Claude returned no JSON object. Raw response (first 300 chars):\n  ${text.slice(0, 300)}`);
+      console.error(`  Claude returned no JSON object. Raw (first 300):\n  ${text.slice(0, 300)}`);
       return null;
     }
 
@@ -453,11 +474,9 @@ Respond with ONLY valid JSON. No explanation, no markdown code blocks, no surrou
     try {
       parsed = JSON.parse(jsonMatch[0]);
     } catch (parseErr) {
-      // Attempt to salvage top-level fields from a truncated response.
-      // Claude sometimes hits max_tokens mid-JSON for complex policies.
       const repaired = repairTruncatedJson(jsonMatch[0]);
       if (repaired) {
-        console.warn(`  Warning: JSON was truncated — using partial repair (${Object.keys(repaired).join(', ')})`);
+        console.warn(`  Warning: JSON truncated — partial repair (${Object.keys(repaired).join(', ')})`);
         parsed = repaired;
       } else {
         console.error(`  JSON parse error: ${parseErr instanceof Error ? parseErr.message : parseErr}`);
@@ -475,11 +494,7 @@ Respond with ONLY valid JSON. No explanation, no markdown code blocks, no surrou
 
     const scopeRequestType = validRequestTypes.includes(parsed.scopeRequestType as typeof validRequestTypes[number])
       ? (parsed.scopeRequestType as CriteriaResult['scopeRequestType'])
-      : scopeSetting === 'INPATIENT'
-        ? 'ADMISSION'
-        : scopeSetting === 'DME'
-          ? 'DME'
-          : 'SERVICE';
+      : scopeSetting === 'INPATIENT' ? 'ADMISSION' : scopeSetting === 'DME' ? 'DME' : 'SERVICE';
 
     return {
       dslJson: (parsed.dslJson as object) ?? {},
@@ -492,6 +507,18 @@ Respond with ONLY valid JSON. No explanation, no markdown code blocks, no surrou
     console.error(`  Claude/Bedrock error: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
+}
+
+async function generateCriteriaWithClaude(ncd: NcdRow): Promise<CriteriaResult | null> {
+  const clinicalText = stripHtml(ncd.indctn_lmtn || ncd.itm_srvc_desc).slice(0, 4500);
+  const prompt = buildClaudePrompt(
+    `${ncd.NCD_mnl_sect_title} (NCD Section ${ncd.NCD_mnl_sect})`,
+    ncd.NCD_mnl_sect,
+    ncd.ncd_keyword ?? '',
+    ncd.NCD_efctv_dt?.slice(0, 10) ?? '',
+    clinicalText,
+  );
+  return callClaude(prompt);
 }
 
 // ---------------------------------------------------------------------------
@@ -616,78 +643,166 @@ async function upsertNcdToDb(
 }
 
 // ---------------------------------------------------------------------------
+// LCD support: extraction, parsing, Claude generation, DB upsert
+// ---------------------------------------------------------------------------
+
+function extractLcdCsv(): string {
+  mkdirSync(EXTRACT_DIR, { recursive: true });
+  const csvPath = `${EXTRACT_DIR}/lcd.csv`;
+
+  if (existsSync(csvPath)) {
+    console.log(`Using cached LCD CSV at ${csvPath}`);
+    return csvPath;
+  }
+
+  const pyScript = `${EXTRACT_DIR}/extract_lcd.py`;
+  writeFileSync(
+    pyScript,
+    `import zipfile, io, csv
+csv.field_size_limit(10_000_000)
+outer = zipfile.ZipFile('${ZIP_PATH}')
+lcd_zip = zipfile.ZipFile(io.BytesIO(outer.read('current_lcd.zip')))
+csv_zip = zipfile.ZipFile(io.BytesIO(lcd_zip.read('current_lcd_csv.zip')))
+with open('${csvPath}', 'wb') as f:
+    f.write(csv_zip.read('lcd.csv'))
+print('lcd.csv extracted to ${csvPath}')
+`,
+  );
+
+  console.log('Extracting lcd.csv from nested zips via python3...');
+  execSync(`python3 ${pyScript}`, { stdio: 'inherit' });
+  return csvPath;
+}
+
+function parseLcdCsv(csvPath: string): LcdRow[] {
+  const content = readFileSync(csvPath, 'utf-8');
+  return parseCsvManual(content) as LcdRow[];
+}
+
+function filterActiveLcds(rows: LcdRow[]): LcdRow[] {
+  return rows.filter(
+    (r) =>
+      r.status?.trim() === 'A' &&          // active
+      !r.date_retired?.trim() &&            // not retired
+      (r.indication?.trim().length > 100),  // has clinical text
+  );
+}
+
+async function generateCriteriaForLcd(lcd: LcdRow): Promise<CriteriaResult | null> {
+  const indication  = stripHtml(lcd.indication ?? '').slice(0, 3000);
+  const codingGuide = stripHtml(lcd.coding_guidelines ?? '').slice(0, 800);
+  const docReqs     = stripHtml(lcd.doc_reqs ?? '').slice(0, 600);
+
+  const combinedText = [indication, codingGuide, docReqs].filter(Boolean).join('\n\n');
+  if (!combinedText.trim()) return null;
+
+  const prompt = buildClaudePrompt(
+    `${lcd.title} (LCD L${lcd.lcd_id})`,
+    `L${lcd.lcd_id}`,
+    lcd.keywords ?? '',
+    lcd.rev_eff_date?.slice(0, 10) ?? lcd.orig_det_eff_date?.slice(0, 10) ?? '',
+    combinedText,
+  );
+
+  return callClaude(prompt);
+}
+
+async function upsertLcdToDb(
+  db: ReturnType<typeof getDb>,
+  lcd: LcdRow,
+  criteria: CriteriaResult,
+): Promise<{ action: 'created' | 'updated' | 'skipped'; policyId: string }> {
+  const cmsId = `L${lcd.lcd_id}`;
+  const existing = await db('policies').where({ cms_id: cmsId }).first();
+
+  const effectiveDate = (lcd.rev_eff_date || lcd.orig_det_eff_date)
+    ? new Date(lcd.rev_eff_date || lcd.orig_det_eff_date).toISOString().slice(0, 10)
+    : null;
+
+  const sectionsJson = {
+    summary: criteria.summary,
+    indications: stripHtml(lcd.indication ?? '').slice(0, 2000),
+    diagnosisCodes: criteria.diagnosisCodes,
+  };
+
+  let policyId: string;
+  let action: 'created' | 'updated';
+
+  if (existing) {
+    policyId = existing.id as string;
+    if ((existing.status as string) !== 'DRAFT') return { action: 'skipped', policyId };
+    await db('policies').where({ id: policyId }).update({
+      title: lcd.title,
+      sections_json: JSON.stringify(sectionsJson),
+      effective_date: effectiveDate,
+      updated_at: new Date(),
+    });
+    action = 'updated';
+  } else {
+    policyId = randomUUID();
+    await db('policies').insert({
+      id: policyId,
+      policy_type: 'LCD',
+      cms_id: cmsId,
+      title: lcd.title,
+      status: 'DRAFT',
+      effective_date: effectiveDate,
+      source_url: `https://www.cms.gov/medicare-coverage-database/view/lcd.aspx?LCDId=${lcd.lcd_id}`,
+      sections_json: JSON.stringify(sectionsJson),
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    action = 'created';
+  }
+
+  const criteriaSetId = `LCD-${lcd.lcd_id}-CRITERIA-v1`;
+  const existingCs = await db('criteria_sets').where({ criteria_set_id: criteriaSetId }).first();
+
+  if (!existingCs) {
+    await db('criteria_sets').insert({
+      id: randomUUID(),
+      criteria_set_id: criteriaSetId,
+      policy_id: policyId,
+      title: `${lcd.title} — Coverage Criteria`,
+      scope_setting: criteria.scopeSetting,
+      scope_request_type: criteria.scopeRequestType,
+      dsl_json: JSON.stringify(criteria.dslJson),
+      status: 'DRAFT',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+  } else if ((existingCs.status as string) === 'DRAFT') {
+    await db('criteria_sets').where({ criteria_set_id: criteriaSetId }).update({
+      dsl_json: JSON.stringify(criteria.dslJson),
+      scope_setting: criteria.scopeSetting,
+      updated_at: new Date(),
+    });
+  }
+
+  return { action, policyId };
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+async function processItems<T>(
+  label: string,
+  items: T[],
+  generateFn: (item: T) => Promise<CriteriaResult | null>,
+  upsertFn: ((db: ReturnType<typeof getDb>, item: T, criteria: CriteriaResult) => Promise<{ action: 'created' | 'updated' | 'skipped'; policyId: string }>) | null,
+  idLabel: (item: T) => string,
+  db: ReturnType<typeof getDb> | null,
+  dryRun: boolean,
+): Promise<{ created: number; updated: number; skipped: number; errors: number }> {
+  let created = 0, updated = 0, skipped = 0, errors = 0;
 
-  const limitIdx = args.indexOf('--limit');
-  const limit = limitIdx !== -1 ? parseInt(args[limitIdx + 1] ?? '10', 10) : Infinity;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!;
+    const progress = `[${String(i + 1).padStart(String(items.length).length, ' ')}/${items.length}]`;
+    console.log(`${progress} ${label} ${idLabel(item)}`);
 
-  const ncdIdIdx = args.indexOf('--ncd-id');
-  const targetNcdId = ncdIdIdx !== -1 ? args[ncdIdIdx + 1] : null;
-
-  const dryRun = args.includes('--dry-run');
-
-  console.log('================================================================');
-  console.log('CMS NCD Criteria Tree Generator');
-  console.log('================================================================');
-  console.log(`Mode      : ${dryRun ? 'DRY RUN (no DB writes)' : 'LIVE'}`);
-  console.log(`Model     : ${process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-6'}`);
-  console.log(`Region    : ${process.env.AWS_REGION ?? 'us-east-1'}`);
-  if (!dryRun) {
-    console.log(
-      `Database  : ${process.env.DB_USER ?? 'document_ai_admin'}@${process.env.DB_HOST ?? '127.0.0.1'}:${process.env.DB_PORT ?? 13306}/${process.env.DB_NAME ?? 'lucidreview'}`,
-    );
-  }
-  console.log('');
-
-  // 1. Ensure zip present
-  await ensureZip();
-
-  // 2. Extract CSV
-  const csvPath = extractNcdCsv();
-
-  // 3. Parse and filter
-  console.log('\nParsing CSV...');
-  const allRows = parseNcdCsv(csvPath);
-  console.log(`  Total rows in CSV   : ${allRows.length}`);
-
-  let rows = filterActiveCoveredNcds(allRows);
-  console.log(`  Active covered NCDs : ${rows.length}`);
-
-  if (targetNcdId) {
-    rows = rows.filter((r) => r.NCD_mnl_sect === targetNcdId);
-    console.log(`  After --ncd-id filter: ${rows.length}`);
-  }
-
-  if (limit !== Infinity) {
-    rows = rows.slice(0, limit);
-    console.log(`  After --limit ${limit}  : ${rows.length}`);
-  }
-
-  if (rows.length === 0) {
-    console.log('\nNo NCDs matched the filters. Exiting.');
-    return;
-  }
-
-  console.log(`\nProcessing ${rows.length} NCDs...\n`);
-
-  const db = dryRun ? null : getDb();
-  let created = 0;
-  let updated = 0;
-  let skipped = 0;
-  let errors = 0;
-
-  for (let i = 0; i < rows.length; i++) {
-    const ncd = rows[i]!;
-    const progress = `[${String(i + 1).padStart(String(rows.length).length, ' ')}/${rows.length}]`;
-
-    console.log(`${progress} NCD ${ncd.NCD_mnl_sect} — ${ncd.NCD_mnl_sect_title}`);
-    console.log(`         effective: ${ncd.NCD_efctv_dt?.slice(0, 10) ?? 'n/a'} | keywords: ${(ncd.ncd_keyword ?? '').slice(0, 80)}`);
-
-    const criteria = await generateCriteriaWithClaude(ncd);
+    const criteria = await generateFn(item);
 
     if (!criteria) {
       console.log(`         FAILED: Claude generation returned null`);
@@ -699,9 +814,9 @@ async function main(): Promise<void> {
       console.log(`         summary: ${criteria.summary.slice(0, 120)}`);
       console.log(`         dsl preview: ${dslPreview}${dslPreview.length >= 120 ? '...' : ''}`);
 
-      if (!dryRun && db) {
+      if (!dryRun && db && upsertFn) {
         try {
-          const result = await upsertNcdToDb(db, ncd, criteria);
+          const result = await upsertFn(db, item, criteria);
           console.log(`         DB: ${result.action} (policy ${result.policyId})`);
           if (result.action === 'created') created++;
           else if (result.action === 'updated') updated++;
@@ -714,12 +829,83 @@ async function main(): Promise<void> {
         console.log(`         DB: (dry-run — skipped)`);
       }
     }
-
     console.log('');
+    if (i < items.length - 1) await new Promise<void>((r) => setTimeout(r, 1000));
+  }
+  return { created, updated, skipped, errors };
+}
 
-    // Rate-limit Bedrock calls to avoid throttling (skip delay after last item)
-    if (i < rows.length - 1) {
-      await new Promise<void>((r) => setTimeout(r, 1000));
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+
+  const limitIdx    = args.indexOf('--limit');
+  const limit       = limitIdx !== -1 ? parseInt(args[limitIdx + 1] ?? '10', 10) : Infinity;
+  const ncdIdIdx    = args.indexOf('--ncd-id');
+  const targetNcdId = ncdIdIdx !== -1 ? args[ncdIdIdx + 1] : null;
+  const lcdIdIdx    = args.indexOf('--lcd-id');
+  const targetLcdId = lcdIdIdx !== -1 ? args[lcdIdIdx + 1] : null;
+  const typeIdx     = args.indexOf('--type');
+  const typeFilter  = (typeIdx !== -1 ? args[typeIdx + 1]?.toUpperCase() : null) ?? 'NCD';
+  const dryRun      = args.includes('--dry-run');
+  const runNcds     = typeFilter === 'NCD' || typeFilter === 'ALL';
+  const runLcds     = typeFilter === 'LCD' || typeFilter === 'ALL';
+
+  console.log('================================================================');
+  console.log('CMS NCD/LCD Criteria Tree Generator');
+  console.log('================================================================');
+  console.log(`Mode      : ${dryRun ? 'DRY RUN (no DB writes)' : 'LIVE'}`);
+  console.log(`Type      : ${typeFilter}`);
+  console.log(`Model     : ${process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-6'}`);
+  console.log(`Region    : ${process.env.AWS_REGION ?? 'us-east-1'}`);
+  if (!dryRun) {
+    console.log(`Database  : ${process.env.DB_USER ?? 'document_ai_admin'}@${process.env.DB_HOST ?? '127.0.0.1'}:${process.env.DB_PORT ?? 13306}/${process.env.DB_NAME ?? 'lucidreview'}`);
+  }
+  console.log('');
+
+  await ensureZip();
+
+  const db    = dryRun ? null : getDb();
+  let created = 0, updated = 0, skipped = 0, errors = 0;
+
+  // ── NCDs ──────────────────────────────────────────────────────────────────
+  if (runNcds) {
+    const csvPath = extractNcdCsv();
+    console.log('\nParsing NCD CSV...');
+    const allNcds = parseNcdCsv(csvPath);
+    console.log(`  Total NCD rows     : ${allNcds.length}`);
+    let ncds = filterActiveCoveredNcds(allNcds);
+    console.log(`  Active covered NCDs: ${ncds.length}`);
+    if (targetNcdId) { ncds = ncds.filter(r => r.NCD_mnl_sect === targetNcdId); console.log(`  After --ncd-id     : ${ncds.length}`); }
+    if (limit !== Infinity) { ncds = ncds.slice(0, limit); console.log(`  After --limit      : ${ncds.length}`); }
+
+    if (ncds.length > 0) {
+      console.log(`\nProcessing ${ncds.length} NCDs...\n`);
+      const r = await processItems('NCD', ncds, generateCriteriaWithClaude,
+        (d, ncd, c) => upsertNcdToDb(d, ncd, c),
+        n => `${n.NCD_mnl_sect} — ${n.NCD_mnl_sect_title}`,
+        db, dryRun);
+      created += r.created; updated += r.updated; skipped += r.skipped; errors += r.errors;
+    }
+  }
+
+  // ── LCDs ──────────────────────────────────────────────────────────────────
+  if (runLcds) {
+    const lcdCsvPath = extractLcdCsv();
+    console.log('\nParsing LCD CSV...');
+    const allLcds = parseLcdCsv(lcdCsvPath);
+    console.log(`  Total LCD rows     : ${allLcds.length}`);
+    let lcds = filterActiveLcds(allLcds);
+    console.log(`  Active LCDs        : ${lcds.length}`);
+    if (targetLcdId) { lcds = lcds.filter(r => r.lcd_id === targetLcdId); console.log(`  After --lcd-id     : ${lcds.length}`); }
+    if (limit !== Infinity) { lcds = lcds.slice(0, limit); console.log(`  After --limit      : ${lcds.length}`); }
+
+    if (lcds.length > 0) {
+      console.log(`\nProcessing ${lcds.length} LCDs...\n`);
+      const r = await processItems('LCD', lcds, generateCriteriaForLcd,
+        (d, lcd, c) => upsertLcdToDb(d, lcd, c),
+        l => `L${l.lcd_id} — ${l.title}`,
+        db, dryRun);
+      created += r.created; updated += r.updated; skipped += r.skipped; errors += r.errors;
     }
   }
 
@@ -729,15 +915,12 @@ async function main(): Promise<void> {
   console.log('Summary');
   console.log('================================================================');
   if (dryRun) {
-    console.log(`Processed : ${rows.length - errors} NCDs successfully`);
-    console.log(`Errors    : ${errors}`);
     console.log('(DRY RUN — nothing written to database)');
   } else {
-    console.log(`Created   : ${created}`);
-    console.log(`Updated   : ${updated}`);
-    console.log(`Skipped   : ${skipped} (non-DRAFT policies not overwritten)`);
-    console.log(`Errors    : ${errors}`);
-    console.log(`Total     : ${rows.length}`);
+    console.log(`Created : ${created}`);
+    console.log(`Updated : ${updated}`);
+    console.log(`Skipped : ${skipped} (non-DRAFT policies not overwritten)`);
+    console.log(`Errors  : ${errors}`);
   }
 }
 
