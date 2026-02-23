@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
+import { useSearchParams } from 'react-router';
 import {
   Play, RotateCcw, CheckCircle2, Circle, Loader2, AlertCircle,
   ChevronDown, ChevronRight, Activity, FlaskConical, Stethoscope,
   FileText, Shield, Cpu, XCircle, HelpCircle, ExternalLink, BookOpen,
+  Database, FileSearch, Brain, Network, GitBranch, Sparkles,
+  Terminal, ChevronUp, ArrowRight, Search,
 } from 'lucide-react';
 
 const HAPI_FHIR_URL = 'http://localhost:8080/fhir';
 
-/** Extract FHIR resource references (e.g. "Observation/abc123") from free text */
 function extractFhirRefs(text: string): Array<{ ref: string; url: string }> {
   const pattern = /\b(Observation|Condition|Patient|Procedure|MedicationRequest|DiagnosticReport|DocumentReference|Encounter|Coverage)\/([A-Za-z0-9\-]+)\b/g;
   const refs: Array<{ ref: string; url: string }> = [];
@@ -15,27 +17,29 @@ function extractFhirRefs(text: string): Array<{ ref: string; url: string }> {
   let m: RegExpExecArray | null;
   while ((m = pattern.exec(text)) !== null) {
     const ref = m[0];
-    if (!seen.has(ref)) {
-      seen.add(ref);
-      refs.push({ ref, url: `${HAPI_FHIR_URL}/${ref}` });
-    }
+    if (!seen.has(ref)) { seen.add(ref); refs.push({ ref, url: `${HAPI_FHIR_URL}/${ref}` }); }
   }
   return refs;
 }
+
 import type { TreeNode, CriterionState } from '../components/CriteriaTreeView';
 import { api } from '../api/client';
 import type { AgentToolCall } from '../api/client';
+import { cn } from '../lib/cn';
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type StepStatus = 'pending' | 'running' | 'done' | 'skipped';
 
 interface WorkflowStep {
   id: number;
   label: string;
+  description: string;
+  icon: typeof Database;
   tools: string[];
   status: StepStatus;
   detail?: string;
+  startTime?: number;
 }
 
 interface LogEntry {
@@ -43,169 +47,91 @@ interface LogEntry {
   tool: string;
   status: 'running' | 'done' | 'error';
   preview?: string;
+  type: 'tool' | 'ai' | 'system';
 }
 
 interface TreeResult {
-  policy: {
-    id: string;
-    title: string;
-    policyType: string;
-    cmsId: string | null;
-    sourceUrl: string | null;
-  };
-  criteriaSet: {
-    id: string;
-    criteriaSetId: string;
-    title: string;
-    scopeSetting: string;
-    scopeRequestType: string;
-    cqlLibraryFhirId: string | null;
-  };
+  policy: { id: string; title: string; policyType: string; cmsId: string | null; sourceUrl: string | null };
+  criteriaSet: { id: string; criteriaSetId: string; title: string; scopeSetting: string; scopeRequestType: string; cqlLibraryFhirId: string | null };
   tree: TreeNode;
   matchedOn: { diagnosisCodes: string[]; serviceType?: string };
 }
 
-// ─── Workflow step definitions ───────────────────────────────────────────────
+// ─── Workflow step definitions ────────────────────────────────────────────────
 
 const INITIAL_STEPS: WorkflowStep[] = [
-  { id: 1, label: 'Gather Case Data',       tools: ['um_get_case', 'um_get_clinical_info', 'um_get_case_history', 'um_get_case_notes', 'um_get_member_coverage'], status: 'pending' },
-  { id: 2, label: 'Collect Documents',       tools: ['um_get_attachments', 'um_download_attachment'], status: 'pending' },
-  { id: 3, label: 'Extract Text from PDFs',  tools: ['pdf_extract_text'], status: 'pending' },
-  { id: 4, label: 'Analyze Clinically (NLP)', tools: ['nlp_extract_clinical_entities'], status: 'pending' },
-  { id: 5, label: 'Normalize to FHIR',       tools: ['fhir_normalize_case', 'fhir_get_patient_summary'], status: 'pending' },
-  { id: 6, label: 'Look Up Coverage Policy', tools: ['policy_lookup'], status: 'pending' },
-  { id: 7, label: 'Evaluate CQL Criteria',   tools: ['cql_evaluate_criteria'], status: 'pending' },
-  { id: 8, label: 'Propose Determination',   tools: ['propose_determination'], status: 'pending' },
+  { id: 1, label: 'Gather Case Data', description: 'Fetching case info, clinical data, member coverage', icon: Database, tools: ['um_get_case', 'um_get_clinical_info', 'um_get_case_history', 'um_get_case_notes', 'um_get_member_coverage'], status: 'pending' },
+  { id: 2, label: 'Collect Documents', description: 'Retrieving clinical attachments and PDFs', icon: FileSearch, tools: ['um_get_attachments', 'um_download_attachment'], status: 'pending' },
+  { id: 3, label: 'Extract Text', description: 'Parsing PDF documents for clinical content', icon: FileText, tools: ['pdf_extract_text'], status: 'pending' },
+  { id: 4, label: 'NLP Analysis', description: 'Extracting diagnoses, vitals, and clinical entities', icon: Brain, tools: ['nlp_extract_clinical_entities'], status: 'pending' },
+  { id: 5, label: 'Normalize to FHIR', description: 'Converting clinical data to structured FHIR resources', icon: Network, tools: ['fhir_normalize_case', 'fhir_get_patient_summary'], status: 'pending' },
+  { id: 6, label: 'Policy Lookup', description: 'Matching applicable coverage policies', icon: Shield, tools: ['policy_lookup'], status: 'pending' },
+  { id: 7, label: 'Evaluate Criteria', description: 'Running CQL library against clinical evidence', icon: GitBranch, tools: ['cql_evaluate_criteria'], status: 'pending' },
+  { id: 8, label: 'Determine Outcome', description: 'Proposing final authorization determination', icon: Sparkles, tools: ['propose_determination'], status: 'pending' },
 ];
 
 const TOOL_TO_STEP: Record<string, number> = {};
 INITIAL_STEPS.forEach(s => s.tools.forEach(t => { TOOL_TO_STEP[t] = s.id; }));
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function nowTs(): string {
-  return new Date().toLocaleTimeString('en-US', {
-    hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
+function nowTs() {
+  return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function toolPreview(toolName: string, output: unknown): string {
   try {
-    const rawContent = Array.isArray(output)
-      ? (output[0] as { text?: string } | undefined)?.text
-      : String(output);
-    if (!rawContent) return '';
-    const parsed = JSON.parse(rawContent) as Record<string, unknown>;
-    if (toolName === 'um_get_case') {
-      const p = parsed['patient'] as Record<string, string> | undefined;
-      return `Case: ${String(parsed['caseNumber'] ?? '')} — ${p?.['firstName'] ?? ''} ${p?.['lastName'] ?? ''}`;
-    }
-    if (toolName === 'um_get_clinical_info') {
-      const diags = (parsed['diagnoses'] as unknown[] | undefined)?.length ?? 0;
-      const vitals = (parsed['vitals'] as unknown[] | undefined)?.length ?? 0;
-      return `${diags} diagnoses, ${vitals} vitals`;
-    }
-    if (toolName === 'pdf_extract_text') {
-      return `${(parsed['text'] as string | undefined)?.length ?? 0} chars extracted`;
-    }
-    if (toolName === 'nlp_extract_clinical_entities') {
-      const count =
-        (parsed['entities'] as unknown[] | undefined)?.length ??
-        (parsed['problems'] as unknown[] | undefined)?.length ?? 0;
-      return `${count} entities found`;
-    }
-    if (toolName === 'policy_lookup') {
-      const len = Array.isArray(parsed) ? (parsed as unknown[]).length : 1;
-      return `${len} polic${len !== 1 ? 'ies' : 'y'} matched`;
-    }
-    if (toolName === 'cql_evaluate_criteria') {
-      if (parsed['allCriteriaMet']) return 'All CQL criteria met';
-      const results = parsed['results'] as Array<{ result: string }> | undefined;
-      const met = results?.filter(r => r.result === 'MET').length ?? 0;
-      return `${met}/${results?.length ?? 0} CQL criteria met`;
-    }
-    if (toolName === 'propose_determination') {
-      const conf = Math.round(((parsed['confidence'] as number | undefined) ?? 0) * 100);
-      return `${String(parsed['determination'] ?? '')} (${conf}% confidence)`;
-    }
+    const raw = Array.isArray(output) ? (output[0] as { text?: string } | undefined)?.text : String(output);
+    if (!raw) return '';
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    if (toolName === 'um_get_case') { const pt = p['patient'] as Record<string, string> | undefined; return `${p['caseNumber'] ?? ''} — ${pt?.['firstName'] ?? ''} ${pt?.['lastName'] ?? ''}`; }
+    if (toolName === 'um_get_clinical_info') return `${(p['diagnoses'] as unknown[] | undefined)?.length ?? 0} diagnoses · ${(p['vitals'] as unknown[] | undefined)?.length ?? 0} vitals`;
+    if (toolName === 'pdf_extract_text') return `${(p['text'] as string | undefined)?.length ?? 0} chars`;
+    if (toolName === 'nlp_extract_clinical_entities') return `${(p['entities'] as unknown[] | undefined)?.length ?? (p['problems'] as unknown[] | undefined)?.length ?? 0} entities`;
+    if (toolName === 'policy_lookup') { const n = Array.isArray(p) ? (p as unknown[]).length : 1; return `${n} polic${n !== 1 ? 'ies' : 'y'} matched`; }
+    if (toolName === 'cql_evaluate_criteria') { if (p['allCriteriaMet']) return 'All criteria met ✓'; const r = p['results'] as Array<{ result: string }> | undefined; const m = r?.filter(x => x.result === 'MET').length ?? 0; return `${m}/${r?.length ?? 0} met`; }
+    if (toolName === 'propose_determination') { const conf = Math.round(((p['confidence'] as number | undefined) ?? 0) * 100); return `${p['determination'] ?? ''} · ${conf}%`; }
     if (toolName === 'fhir_normalize_case') return 'FHIR bundle created';
     return '';
-  } catch {
-    return '';
-  }
+  } catch { return ''; }
 }
 
-// Fuzzy-map a criterion name from propose_determination to a tree leaf id
 const KEYWORD_MAP: Array<[RegExp, string[]]> = [
-  [/coverage|benefit|medicare|insur/i,                              ['coverage']],
-  [/diagnos|icd|j96|respiratory fail/i,                            ['diagnosis']],
-  [/spo2|spO|oximeter|saturation/i,                                ['spo2']],
-  [/po2|pao2|partial.*oxygen|oxygen.*partial/i,                    ['po2']],
-  [/resp.*rate|RR|breathing.*rate|tachypnea/i,                     ['resp_rate']],
-  [/pco2|paco2|hypercap/i,                                         ['hypercapnia']],
-  [/ph|acidosis|acidem/i,                                          ['acidosis']],
-  [/lower.level|outpatient.*fail|fail.*outpat|nebuliz|home.*treat/i, ['treatment_failure']],
-  [/inpatient.*monitor|iv.*medic|bipap|cpap|ventil|hospital.*level/i, ['inpatient_need']],
-  [/cql|automat|library/i,                                          ['cql']],
+  [/coverage|benefit|medicare|insur/i, ['coverage']],
+  [/diagnos|icd|j96|respiratory fail/i, ['diagnosis']],
+  [/spo2|spO|oximeter|saturation/i, ['spo2']],
+  [/po2|pao2|partial.*oxygen/i, ['po2']],
+  [/resp.*rate|RR|tachypnea/i, ['resp_rate']],
+  [/pco2|paco2|hypercap/i, ['hypercapnia']],
+  [/ph|acidosis|acidem/i, ['acidosis']],
+  [/lower.level|outpatient.*fail/i, ['treatment_failure']],
+  [/inpatient.*monitor|bipap|cpap|ventil/i, ['inpatient_need']],
+  [/cql|automat|library/i, ['cql']],
 ];
 
 function mapCriterionToLeafIds(name: string): string[] {
-  for (const [pattern, ids] of KEYWORD_MAP) {
-    if (pattern.test(name)) return ids;
-  }
+  for (const [pattern, ids] of KEYWORD_MAP) { if (pattern.test(name)) return ids; }
   return [];
 }
-
 function collectLeafIds(node: TreeNode): string[] {
-  if (node.type === 'LEAF') return [node.id];
-  return (node.children ?? []).flatMap(collectLeafIds);
+  return node.type === 'LEAF' ? [node.id] : (node.children ?? []).flatMap(collectLeafIds);
+}
+function evaluateNode(node: TreeNode, states: Map<string, CriterionState>): 'MET' | 'NOT_MET' | 'UNKNOWN' {
+  if (node.type === 'LEAF') { const s = states.get(node.id) ?? 'unknown'; return s === 'met' ? 'MET' : s === 'not_met' ? 'NOT_MET' : 'UNKNOWN'; }
+  const results = (node.children ?? []).map(c => evaluateNode(c, states));
+  if (node.type === 'AND') { if (!results.length) return 'UNKNOWN'; if (results.every(r => r === 'MET')) return 'MET'; if (results.some(r => r === 'NOT_MET')) return 'NOT_MET'; return 'UNKNOWN'; }
+  if (results.some(r => r === 'MET')) return 'MET'; if (results.every(r => r === 'NOT_MET')) return 'NOT_MET'; return 'UNKNOWN';
 }
 
-// ─── Sub-components ─────────────────────────────────────────────────────────
-
-const DATA_TYPE_ICON: Record<string, React.ReactNode> = {
-  vital:         <Activity size={11} />,
-  lab:           <FlaskConical size={11} />,
-  diagnosis:     <Stethoscope size={11} />,
-  procedure:     <Cpu size={11} />,
-  coverage:      <Shield size={11} />,
-  clinical_note: <FileText size={11} />,
+const DATA_ICON: Record<string, React.ReactNode> = {
+  vital: <Activity size={10} />, lab: <FlaskConical size={10} />, diagnosis: <Stethoscope size={10} />,
+  procedure: <Cpu size={10} />, coverage: <Shield size={10} />, clinical_note: <FileText size={10} />,
 };
 
-function evaluateNode(
-  node: TreeNode,
-  states: Map<string, CriterionState>,
-): 'MET' | 'NOT_MET' | 'UNKNOWN' {
-  if (node.type === 'LEAF') {
-    const s = states.get(node.id) ?? 'unknown';
-    return s === 'met' ? 'MET' : s === 'not_met' ? 'NOT_MET' : 'UNKNOWN';
-  }
-  const results = (node.children ?? []).map(c => evaluateNode(c, states));
-  if (node.type === 'AND') {
-    if (!results.length) return 'UNKNOWN';
-    if (results.every(r => r === 'MET')) return 'MET';
-    if (results.some(r => r === 'NOT_MET')) return 'NOT_MET';
-    return 'UNKNOWN';
-  }
-  // OR
-  if (results.some(r => r === 'MET')) return 'MET';
-  if (results.every(r => r === 'NOT_MET')) return 'NOT_MET';
-  return 'UNKNOWN';
-}
+// ─── Criteria Tree Node ───────────────────────────────────────────────────────
 
-// Read-only auto-updating tree node
-function AutoTreeNode({
-  node,
-  states,
-  evidence,
-  depth = 0,
-  activeLeafIds,
-}: {
-  node: TreeNode;
-  states: Map<string, CriterionState>;
-  evidence: Map<string, string>;
-  depth?: number;
-  activeLeafIds: Set<string>;
+function AutoTreeNode({ node, states, evidence, depth = 0, activeLeafIds }: {
+  node: TreeNode; states: Map<string, CriterionState>; evidence: Map<string, string>; depth?: number; activeLeafIds: Set<string>;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [showEvidence, setShowEvidence] = useState(false);
@@ -218,104 +144,64 @@ function AutoTreeNode({
     const fhirRefs = ev ? extractFhirRefs(ev) : [];
     const hasEvidence = s !== 'unknown' && ev;
 
-    const border =
-      s === 'met'     ? 'border-l-emerald-500' :
-      s === 'not_met' ? 'border-l-red-400'     :
-      isActive        ? 'border-l-blue-400'    :
-                        'border-l-slate-200';
-    const bg =
-      s === 'met'     ? 'bg-emerald-50' :
-      s === 'not_met' ? 'bg-red-50'     :
-      isActive        ? 'bg-blue-50'    :
-                        'bg-white';
-    const icon =
-      s === 'met'     ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> :
-      s === 'not_met' ? <XCircle size={16} className="text-red-400 shrink-0" />          :
-      isActive        ? <Loader2 size={16} className="text-blue-500 animate-spin shrink-0" /> :
-                        <HelpCircle size={16} className="text-slate-300 shrink-0" />;
+    const leafStyle =
+      s === 'met' ? { border: 'border-l-emerald-500', bg: 'bg-emerald-50/60', ring: 'ring-emerald-100' } :
+        s === 'not_met' ? { border: 'border-l-red-400', bg: 'bg-red-50/60', ring: 'ring-red-100' } :
+          isActive ? { border: 'border-l-blue-400', bg: 'bg-blue-50/60', ring: 'ring-blue-100' } :
+            { border: 'border-l-slate-200', bg: 'bg-white', ring: 'ring-slate-100' };
+
+    const leafIcon =
+      s === 'met' ? <CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> :
+        s === 'not_met' ? <XCircle size={14} className="text-red-400 shrink-0" /> :
+          isActive ? <Loader2 size={14} className="text-blue-500 animate-spin shrink-0" /> :
+            <Circle size={14} className="text-slate-300 shrink-0" />;
 
     return (
-      <div className={`${depth > 0 ? 'ml-4' : ''} relative mb-1.5`}>
-        {depth > 0 && <div className="absolute -left-2 top-0 bottom-0 w-px bg-slate-200" />}
-        {depth > 0 && <div className="absolute -left-2 top-4 w-2 h-px bg-slate-200" />}
-        <div className={`rounded-lg border border-slate-100 border-l-4 ${border} ${bg} transition-all duration-300 overflow-hidden`}>
-          {/* Main row */}
-          <div className="px-3 py-2 flex items-start gap-2">
-            <div className="mt-0.5">{icon}</div>
+      <div className={cn(depth > 0 ? 'ml-5' : '', 'relative mb-1.5 animate-criteria-reveal')}>
+        {depth > 0 && <div className="absolute -left-3 top-0 bottom-0 w-px bg-slate-200" />}
+        {depth > 0 && <div className="absolute -left-3 top-5 h-px w-3 bg-slate-200" />}
+        <div className={cn('rounded-lg border border-l-[3px] ring-1 transition-all duration-300', leafStyle.border, leafStyle.bg, leafStyle.ring, isActive && s === 'unknown' && 'animate-node-pulse')}>
+          <div className="flex items-start gap-2 px-3 py-2">
+            <div className="mt-0.5 shrink-0">{leafIcon}</div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
                 {node.dataType && (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] bg-slate-100 text-slate-500 rounded px-1 py-0.5">
-                    {DATA_TYPE_ICON[node.dataType]}
-                  </span>
+                  <span className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] bg-slate-100 text-slate-500">{DATA_ICON[node.dataType]}</span>
                 )}
-                <span className="text-xs font-medium text-slate-800">{node.label}</span>
+                <span className="text-xs font-semibold text-slate-800">{node.label}</span>
               </div>
               {node.threshold && (
-                <span className="inline-block mt-0.5 text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">
-                  {node.threshold.display ??
-                    `${node.threshold.operator} ${
-                      Array.isArray(node.threshold.value)
-                        ? node.threshold.value.join(', ')
-                        : String(node.threshold.value ?? '')
-                    }${node.threshold.unit ? ' ' + node.threshold.unit : ''}`}
+                <span className="mt-1 inline-block font-mono text-[10px] text-slate-500 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">
+                  {node.threshold.display ?? `${node.threshold.operator} ${Array.isArray(node.threshold.value) ? node.threshold.value.join(', ') : String(node.threshold.value ?? '')}${node.threshold.unit ? ' ' + node.threshold.unit : ''}`}
                 </span>
               )}
-              {isActive && s === 'unknown' && (
-                <p className="text-[10px] text-blue-500 mt-0.5 animate-pulse">Evaluating...</p>
-              )}
+              {isActive && s === 'unknown' && <p className="mt-0.5 text-[10px] text-blue-500 animate-pulse">AI evaluating…</p>}
             </div>
-            {/* Evidence toggle — only shown once criteria is resolved */}
             {hasEvidence && (
               <button
                 type="button"
                 onClick={() => setShowEvidence(v => !v)}
-                className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium border transition-colors ${
-                  showEvidence
-                    ? 'bg-slate-700 text-white border-slate-700'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700'
-                }`}
-                title="View evidence"
+                className={cn('shrink-0 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-all', showEvidence ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700')}
               >
-                <BookOpen size={10} />
+                <BookOpen size={9} />
                 Evidence
                 {fhirRefs.length > 0 && (
-                  <span className={`rounded-full px-1 text-[9px] font-bold ${showEvidence ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600'}`}>
-                    {fhirRefs.length}
-                  </span>
+                  <span className={cn('rounded-full px-1 text-[9px] font-bold', showEvidence ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600')}>{fhirRefs.length}</span>
                 )}
               </button>
             )}
           </div>
-
-          {/* Evidence panel — expands inline */}
           {hasEvidence && showEvidence && (
-            <div className={`mx-3 mb-2.5 rounded-lg border p-3 text-xs ${
-              s === 'met' ? 'border-emerald-200 bg-emerald-50/80' : 'border-red-200 bg-red-50/80'
-            }`}>
-              <p className={`font-semibold mb-1.5 ${s === 'met' ? 'text-emerald-800' : 'text-red-700'}`}>
-                Clinical Evidence
-              </p>
-              {/* Evidence text */}
+            <div className={cn('mx-3 mb-2.5 rounded-lg border p-3 text-xs animate-fade-in', s === 'met' ? 'border-emerald-200 bg-emerald-50/80' : 'border-red-200 bg-red-50/80')}>
+              <p className={cn('font-semibold mb-1.5 text-[11px] uppercase tracking-wide', s === 'met' ? 'text-emerald-700' : 'text-red-700')}>Clinical Evidence</p>
               <p className="text-slate-600 leading-relaxed mb-2">{ev}</p>
-
-              {/* FHIR resource links */}
               {fhirRefs.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                    FHIR Resources
-                  </p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">FHIR Resources</p>
                   <div className="flex flex-wrap gap-1.5">
                     {fhirRefs.map(({ ref, url }) => (
-                      <a
-                        key={ref}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-md bg-white border border-blue-200 px-2 py-0.5 text-[11px] font-mono text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors"
-                      >
-                        <ExternalLink size={9} />
-                        {ref}
+                      <a key={ref} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-md bg-white border border-blue-200 px-2 py-0.5 text-[11px] font-mono text-blue-600 hover:bg-blue-50 transition-colors">
+                        <ExternalLink size={9} />{ref}
                       </a>
                     ))}
                   </div>
@@ -331,84 +217,195 @@ function AutoTreeNode({
   // Branch node
   const children = node.children ?? [];
   const metCount = children.filter(c => evaluateNode(c, states) === 'MET').length;
-  const borderColor =
-    result === 'MET'     ? 'border-l-emerald-400' :
-    result === 'NOT_MET' ? 'border-l-red-400'     :
-    node.type === 'AND'  ? 'border-l-blue-300'    :
-                           'border-l-amber-300';
-  const resultIcon =
-    result === 'MET'     ? <CheckCircle2 size={15} className="text-emerald-500" /> :
-    result === 'NOT_MET' ? <XCircle size={15} className="text-red-400" />          :
-                           <HelpCircle size={15} className="text-slate-300" />;
+  const branchBorder = result === 'MET' ? 'border-l-emerald-400' : result === 'NOT_MET' ? 'border-l-red-400' : node.type === 'AND' ? 'border-l-blue-300' : 'border-l-amber-300';
+  const typeBadge = node.type === 'AND' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+  const barColor = result === 'MET' ? 'bg-emerald-400' : result === 'NOT_MET' ? 'bg-red-400' : 'bg-blue-300';
+  const resultIcon = result === 'MET' ? <CheckCircle2 size={13} className="text-emerald-500 shrink-0" /> : result === 'NOT_MET' ? <XCircle size={13} className="text-red-400 shrink-0" /> : <HelpCircle size={13} className="text-slate-300 shrink-0" />;
 
   return (
-    <div className={`${depth > 0 ? 'ml-4' : ''} relative mb-1.5`}>
-      {depth > 0 && <div className="absolute -left-2 top-0 bottom-0 w-px bg-slate-200" />}
-      {depth > 0 && <div className="absolute -left-2 top-4 w-2 h-px bg-slate-200" />}
-      <div className={`rounded-lg border border-slate-200 border-l-4 ${borderColor} bg-white shadow-sm overflow-hidden`}>
-        <div
-          className="flex items-center gap-2 px-3 py-2 cursor-pointer"
-          onClick={() => setExpanded(e => !e)}
-        >
-          <span className="text-slate-400">
-            {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-          </span>
-          {node.type === 'AND'
-            ? <span className="text-[9px] font-bold bg-blue-100 text-blue-700 rounded px-1.5 py-0.5 shrink-0">ALL OF</span>
-            : <span className="text-[9px] font-bold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 shrink-0">ANY OF</span>}
-          <span className="text-xs font-semibold text-slate-800 flex-1">{node.label}</span>
+    <div className={cn(depth > 0 ? 'ml-5' : '', 'relative mb-1.5')}>
+      {depth > 0 && <div className="absolute -left-3 top-0 bottom-0 w-px bg-slate-200" />}
+      {depth > 0 && <div className="absolute -left-3 top-5 h-px w-3 bg-slate-200" />}
+      <div className={cn('rounded-lg border border-slate-200 border-l-[3px] bg-white shadow-sm overflow-hidden', branchBorder)}>
+        <div className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50/50 transition-colors" onClick={() => setExpanded(e => !e)}>
+          <span className="text-slate-400 shrink-0">{expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0', typeBadge)}>{node.type === 'AND' ? 'All of' : 'Any of'}</span>
+          <span className="text-xs font-semibold text-slate-800 flex-1 min-w-0 truncate">{node.label}</span>
           <span className="text-[10px] text-slate-400 font-mono shrink-0">{metCount}/{children.length}</span>
           {resultIcon}
         </div>
-        {/* mini progress bar */}
         <div className="h-0.5 bg-slate-100">
-          <div
-            className={`h-full transition-all duration-500 ${
-              result === 'MET' ? 'bg-emerald-400' : result === 'NOT_MET' ? 'bg-red-400' : 'bg-blue-300'
-            }`}
-            style={{ width: `${children.length ? (metCount / children.length) * 100 : 0}%` }}
-          />
+          <div className={cn('h-full transition-all duration-700 ease-out', barColor)} style={{ width: `${children.length ? (metCount / children.length) * 100 : 0}%` }} />
         </div>
       </div>
       {expanded && (
         <div className="mt-1">
-          {children.map(c => (
-            <AutoTreeNode
-              key={c.id}
-              node={c}
-              states={states}
-              evidence={evidence}
-              depth={depth + 1}
-              activeLeafIds={activeLeafIds}
-            />
-          ))}
+          {children.map(c => <AutoTreeNode key={c.id} node={c} states={states} evidence={evidence} depth={depth + 1} activeLeafIds={activeLeafIds} />)}
         </div>
       )}
     </div>
   );
 }
 
-// ─── Outcome banner config ───────────────────────────────────────────────────
+// ─── Outcome config ───────────────────────────────────────────────────────────
 
 const OUTCOME_CONFIG = {
-  AUTO_APPROVE: { label: 'Auto-Approve',     bg: 'bg-emerald-500' },
-  MD_REVIEW:    { label: 'MD Review Needed', bg: 'bg-amber-500' },
-  MORE_INFO:    { label: 'More Info Needed', bg: 'bg-blue-500' },
-  DENY:         { label: 'Deny',             bg: 'bg-red-500' },
+  AUTO_APPROVE: { label: 'Auto-Approve', sublabel: 'All required criteria are met', cssClass: 'outcome-approve', description: 'This case qualifies for automatic approval. All coverage criteria are satisfied by clinical evidence. Subject to human reviewer confirmation.' },
+  MD_REVIEW: { label: 'MD Review Required', sublabel: 'Clinical criteria require physician review', cssClass: 'outcome-md-review', description: 'One or more criteria could not be confirmed from available documentation. A physician review is required before any adverse determination.' },
+  MORE_INFO: { label: 'Additional Info Needed', sublabel: 'Missing clinical documentation', cssClass: 'outcome-more-info', description: 'Some criteria require additional clinical documentation. Please submit the missing information to complete this review.' },
+  DENY: { label: 'Recommended Denial', sublabel: 'Coverage criteria not met', cssClass: 'outcome-deny', description: 'Coverage criteria are not met based on submitted clinical evidence. Recommended for denial — requires MD review before finalization.' },
 } as const;
-
 type OutcomeKey = keyof typeof OUTCOME_CONFIG;
+function isOutcomeKey(val: string): val is OutcomeKey { return val in OUTCOME_CONFIG; }
 
-function isOutcomeKey(val: string): val is OutcomeKey {
-  return val in OUTCOME_CONFIG;
+// ─── Step item ────────────────────────────────────────────────────────────────
+
+function StepItem({ step, isLast }: { step: WorkflowStep; isLast: boolean }) {
+  const Icon = step.icon;
+  const isRunning = step.status === 'running';
+  const isDone = step.status === 'done';
+  const isPending = step.status === 'pending';
+
+  return (
+    <div className="relative flex gap-3">
+      {!isLast && (
+        <div className="absolute left-[1.125rem] top-10 bottom-0 w-0.5">
+          <div className={cn('h-full w-full transition-all duration-500', isDone ? 'bg-emerald-400' : 'bg-slate-200')} />
+        </div>
+      )}
+      <div className="relative shrink-0 z-10">
+        {isRunning ? (
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-blue-400 bg-blue-50 shadow-sm shadow-blue-400/20">
+            <Loader2 size={15} className="text-blue-500 animate-spin" />
+          </div>
+        ) : isDone ? (
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 shadow-sm shadow-emerald-400/30">
+            <CheckCircle2 size={16} className="text-white" />
+          </div>
+        ) : (
+          <div className={cn('flex h-9 w-9 items-center justify-center rounded-full border-2', isPending ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-slate-100')}>
+            <Icon size={14} className="text-slate-400" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 pb-5">
+        <div className="flex items-start gap-2 pt-1.5">
+          <div className="flex-1 min-w-0">
+            <p className={cn('text-xs font-semibold leading-tight', isRunning ? 'text-blue-700' : isDone ? 'text-slate-800' : 'text-slate-400')}>
+              {step.label}
+            </p>
+            <p className={cn('mt-0.5 text-[11px] leading-tight', isRunning ? 'text-blue-500' : isDone ? 'text-slate-500' : 'text-slate-400')}>
+              {step.detail && isDone ? step.detail : step.description}
+            </p>
+          </div>
+          {isRunning && <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-bold text-blue-600 uppercase tracking-wide animate-pulse">Active</span>}
+          {isDone && <span className="shrink-0 text-[10px] font-medium text-emerald-500">✓</span>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-// ─── MAIN PAGE ───────────────────────────────────────────────────────────────
-
+// ─── Known cases ──────────────────────────────────────────────────────────────
 const KNOWN_CASES = ['ARF-2026-001', 'CHF-2026-002', 'HIP-2026-003', 'DIA-2026-004', 'SKN-2026-005'];
 
+// ─── Case search input with suggestions dropdown ─────────────────────────────
+
+function CaseSearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listId = useId();
+
+  const suggestions = KNOWN_CASES.filter(c =>
+    !query.trim() || c.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  function select(c: string) {
+    setQuery(c);
+    onChange(c);
+    setOpen(false);
+    inputRef.current?.blur();
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value.toUpperCase();
+    setQuery(v);
+    onChange(v);
+    setOpen(true);
+  }
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  return (
+    <div className="relative mb-6">
+      <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        Case Number
+      </label>
+      <div className="relative">
+        <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={handleChange}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Search or type a case number…"
+          autoComplete="off"
+          spellCheck={false}
+          aria-autocomplete="list"
+          aria-controls={listId}
+          aria-expanded={open}
+          className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-10 font-mono text-sm font-semibold text-slate-800 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); onChange(''); inputRef.current?.focus(); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-500 transition-colors hover:bg-slate-300"
+            aria-label="Clear"
+          >
+            <XCircle size={12} />
+          </button>
+        )}
+      </div>
+
+      {open && suggestions.length > 0 && (
+        <ul
+          id={listId}
+          role="listbox"
+          className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/80 animate-fade-in"
+        >
+          {suggestions.map(c => (
+            <li key={c} role="option" aria-selected={c === value}>
+              <button
+                type="button"
+                onMouseDown={() => select(c)}
+                className={cn(
+                  'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                  c === value ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50',
+                )}
+              >
+                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', c === value ? 'bg-blue-500' : 'bg-slate-300')} />
+                <span className="font-mono text-xs font-semibold tracking-wide">{c}</span>
+                {c === value && <span className="ml-auto text-[10px] font-medium text-blue-500">Selected</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function CaseReview() {
-  const [caseNumber, setCaseNumber] = useState('ARF-2026-001');
+  const [searchParams] = useSearchParams();
+  const [caseNumber, setCaseNumber] = useState(() => searchParams.get('case') ?? 'ARF-2026-001');
+  const autoStarted = useRef(false);
   const [phase, setPhase] = useState<'idle' | 'loading_criteria' | 'running' | 'done' | 'error'>('idle');
   const [steps, setSteps] = useState<WorkflowStep[]>(INITIAL_STEPS);
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -421,43 +418,29 @@ export default function CaseReview() {
   const [confidence, setConfidence] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [seenToolIds, setSeenToolIds] = useState<Set<string>>(new Set());
+  const [logCollapsed, setLogCollapsed] = useState(false);
+
   const logRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Scroll log to bottom on new entries
   useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
-    }
-  }, [log]);
+    if (logRef.current && !logCollapsed) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [log, logCollapsed]);
 
-  const appendLog = useCallback((entry: LogEntry) => {
-    setLog(prev => [...prev.slice(-49), entry]);
-  }, []);
+  const appendLog = useCallback((entry: LogEntry) => { setLog(prev => [...prev.slice(-99), entry]); }, []);
 
   function markStep(toolName: string, status: 'running' | 'done', detail?: string) {
     const stepId = TOOL_TO_STEP[toolName];
     if (!stepId) return;
-    setSteps(prev =>
-      prev.map(s => {
-        if (s.id === stepId) {
-          // Only advance to done if currently running or re-running
-          const nextStatus: StepStatus =
-            status === 'running' ? 'running' : 'done';
-          return { ...s, status: nextStatus, detail: detail ?? s.detail };
-        }
-        // Auto-complete earlier pending steps when a later step starts running
-        if (s.id < stepId && s.status === 'pending' && status === 'running') {
-          return { ...s, status: 'done' };
-        }
-        return s;
-      }),
-    );
+    setSteps(prev => prev.map(s => {
+      if (s.id === stepId) return { ...s, status: status === 'running' ? 'running' : 'done', detail: detail ?? s.detail, startTime: status === 'running' && !s.startTime ? Date.now() : s.startTime };
+      if (s.id < stepId && s.status === 'pending' && status === 'running') return { ...s, status: 'done' };
+      return s;
+    }));
   }
 
   function processToolCalls(toolCalls: AgentToolCall[], treeLeafIds: string[]) {
     for (const tc of toolCalls) {
-      // Support both camelCase (serialized) and snake_case (legacy) field names
       const raw = tc as unknown as Record<string, unknown>;
       const toolName = String(raw['toolName'] ?? raw['tool_name'] ?? '');
       const output = raw['output'];
@@ -466,81 +449,155 @@ export default function CaseReview() {
       setSeenToolIds(prev => new Set([...prev, id]));
 
       const preview = toolPreview(toolName, output);
-      appendLog({ ts: nowTs(), tool: toolName, status: 'done', preview });
+      appendLog({ ts: nowTs(), tool: toolName, status: 'done', preview, type: 'tool' });
       markStep(toolName, 'done', preview);
 
-      // Update criteria states from propose_determination output
       if (toolName === 'propose_determination') {
         try {
-          const rawContent = Array.isArray(output)
-            ? (output[0] as { text?: string } | undefined)?.text
-            : String(output);
-          const det = JSON.parse(rawContent ?? '{}') as {
-            determination?: string;
-            confidence?: number;
-            criteriaResults?: Array<{ name?: string; result?: string }>;
-          };
-
+          const rawContent = Array.isArray(output) ? (output[0] as { text?: string } | undefined)?.text : String(output);
+          const det = JSON.parse(rawContent ?? '{}') as { determination?: string; confidence?: number; criteriaResults?: Array<{ name?: string; result?: string }> };
           const outKey = det.determination ?? '';
           setDetermination(outKey);
           setConfidence(det.confidence ?? 0);
-
           const newStates = new Map<string, CriterionState>();
           const newEvidence = new Map<string, string>();
           for (const cr of det.criteriaResults ?? []) {
             const leafIds = mapCriterionToLeafIds(cr.name ?? '');
-            const state: CriterionState =
-              cr.result === 'MET' ? 'met' : cr.result === 'NOT_MET' ? 'not_met' : 'unknown';
-            const ev: string = (cr as Record<string, unknown>).evidence as string ?? '';
-            for (const lid of leafIds) {
-              if (treeLeafIds.includes(lid)) {
-                newStates.set(lid, state);
-                if (ev) newEvidence.set(lid, ev);
+            const state: CriterionState = cr.result === 'MET' ? 'met' : cr.result === 'NOT_MET' ? 'not_met' : 'unknown';
+            const ev = (cr as Record<string, unknown>).evidence as string ?? '';
+            for (const lid of leafIds) { if (treeLeafIds.includes(lid)) { newStates.set(lid, state); if (ev) newEvidence.set(lid, ev); } }
+          }
+          if (outKey === 'AUTO_APPROVE') { for (const lid of treeLeafIds) { if (!newStates.has(lid)) newStates.set(lid, 'met'); } }
+          // Stagger each criterion update by 150ms so they animate in one at a time
+          let animDelay = 0;
+          for (const [nodeId, nodeState] of newStates) {
+            setTimeout(() => {
+              setCriteriaStates(prev => { const n = new Map(prev); n.set(nodeId, nodeState); return n; });
+            }, animDelay);
+            animDelay += 150;
+          }
+          setCriteriaEvidence(newEvidence);
+          setActiveLeafIds(new Set());
+        } catch { /* ignore */ }
+      }
+      if (toolName === 'cql_evaluate_criteria') {
+        // Flash the clinical leaf nodes as active while CQL runs
+        setActiveLeafIds(new Set(treeLeafIds.filter(id => ['spo2', 'po2', 'resp_rate', 'hypercapnia', 'acidosis'].includes(id))));
+        setTimeout(() => setActiveLeafIds(new Set()), 3000);
+        try {
+          const rawCql = Array.isArray(output) ? (output[0] as { text?: string } | undefined)?.text : String(output);
+          const cqlData = JSON.parse(rawCql ?? '{}') as { allCriteriaMet?: boolean; results?: Array<{ name?: string; result?: string }> };
+          // Apply individual result states from CQL output
+          for (const r of (cqlData.results ?? [])) {
+            const cqlState: CriterionState = r.result === 'MET' ? 'met' : r.result === 'NOT_MET' ? 'not_met' : 'unknown';
+            const keywords = (r.name ?? '').toLowerCase();
+            const matches: string[] = [];
+            if (keywords.includes('spo2') || keywords.includes('oxygen')) matches.push('spo2');
+            if (keywords.includes('resp') || keywords.includes('rr')) matches.push('resp_rate');
+            if (keywords.includes('pco2') || keywords.includes('hypercap')) matches.push('hypercapnia');
+            if (keywords.includes('ph') || keywords.includes('acidosis')) matches.push('acidosis');
+            if (keywords.includes('diagnosis') || keywords.includes('icd')) matches.push('diagnosis');
+            if (keywords.includes('coverage')) matches.push('coverage');
+            for (const nodeId of matches) {
+              if (treeLeafIds.includes(nodeId)) {
+                setCriteriaStates(prev => { const n = new Map(prev); n.set(nodeId, cqlState); return n; });
               }
             }
           }
-          // If AUTO_APPROVE, mark all remaining unknown leaves as met
-          if (outKey === 'AUTO_APPROVE') {
-            for (const lid of treeLeafIds) {
-              if (!newStates.has(lid)) newStates.set(lid, 'met');
+          // If CQL confirms all met, stagger-fill any remaining unknown leaves green
+          if (cqlData.allCriteriaMet) {
+            const clinicalLeafIds = treeLeafIds.filter(id => !['coverage', 'diagnosis'].includes(id));
+            let cqlDelay = 200;
+            for (const leafId of clinicalLeafIds) {
+              setTimeout(() => {
+                setCriteriaStates(prev => {
+                  const next = new Map(prev);
+                  if (!prev.has(leafId)) next.set(leafId, 'met');
+                  return next;
+                });
+              }, cqlDelay);
+              cqlDelay += 250;
             }
           }
-          setCriteriaStates(newStates);
-          setCriteriaEvidence(newEvidence);
-          setActiveLeafIds(new Set());
-        } catch {
-          // ignore parse errors
+        } catch { /* ignore */ }
+      }
+      if (toolName === 'um_get_member_coverage') {
+        // Flash coverage node active, then mark it met
+        if (treeLeafIds.includes('coverage')) {
+          setActiveLeafIds(new Set(['coverage']));
+          setTimeout(() => {
+            setCriteriaStates(prev => { const n = new Map(prev); n.set('coverage', 'met'); return n; });
+            setActiveLeafIds(new Set());
+          }, 1200);
         }
       }
-
-      // Light up clinical leaves during CQL evaluation
-      if (toolName === 'cql_evaluate_criteria') {
-        setActiveLeafIds(
-          new Set(treeLeafIds.filter(id => ['spo2', 'po2', 'resp_rate', 'hypercapnia', 'acidosis'].includes(id))),
-        );
-        setTimeout(() => setActiveLeafIds(new Set()), 3000);
-      }
-
-      // Mark coverage as met when coverage is fetched
-      if (toolName === 'um_get_member_coverage') {
-        setCriteriaStates(prev => {
-          const next = new Map(prev);
-          if (treeLeafIds.includes('coverage')) next.set('coverage', 'met');
-          return next;
-        });
-      }
-
-      // Briefly highlight diagnosis leaf during clinical info fetch
       if (toolName === 'um_get_clinical_info') {
-        setActiveLeafIds(new Set(['diagnosis']));
-        setTimeout(() => {
-          setActiveLeafIds(new Set());
-          setCriteriaStates(prev => {
-            const next = new Map(prev);
-            if (treeLeafIds.includes('diagnosis')) next.set('diagnosis', 'met');
-            return next;
-          });
-        }, 1500);
+        try {
+          const rawClinical = Array.isArray(output) ? (output[0] as { text?: string } | undefined)?.text : String(output);
+          const clinicalData = JSON.parse(rawClinical ?? '{}') as { diagnoses?: Array<{ code?: string }> };
+          const diagCodes = (clinicalData.diagnoses ?? []).map((d) => d.code ?? '');
+          if (diagCodes.length > 0 && treeLeafIds.includes('diagnosis')) {
+            setActiveLeafIds(new Set(['diagnosis']));
+            setTimeout(() => {
+              setCriteriaStates(prev => { const n = new Map(prev); n.set('diagnosis', 'met'); return n; });
+              setActiveLeafIds(new Set());
+            }, 1200);
+          }
+        } catch {
+          // Fallback: still flash the diagnosis node
+          setActiveLeafIds(new Set(['diagnosis']));
+          setTimeout(() => {
+            setActiveLeafIds(new Set());
+            setCriteriaStates(prev => { const n = new Map(prev); if (treeLeafIds.includes('diagnosis')) n.set('diagnosis', 'met'); return n; });
+          }, 1500);
+        }
+      }
+      if (toolName === 'nlp_extract_clinical_entities') {
+        try {
+          const rawNlp = Array.isArray(output) ? (output[0] as { text?: string } | undefined)?.text : String(output);
+          const nlpData = JSON.parse(rawNlp ?? '{}') as { entities?: Array<{ type?: string; text?: string; value?: number; loinc?: string; assertion?: string }> };
+          const entities = nlpData.entities ?? [];
+          const nlpUpdates = new Map<string, CriterionState>();
+          for (const e of entities) {
+            const textLower = (e.text ?? '').toLowerCase();
+            const isMet = (e.assertion ?? 'affirmed') === 'affirmed';
+            const nlpState: CriterionState = isMet ? 'met' : 'not_met';
+            // SpO2 / oxygen saturation
+            if ((textLower.includes('spo2') || textLower.includes('oxygen sat') || e.loinc === '2708-6') && treeLeafIds.includes('spo2')) {
+              nlpUpdates.set('spo2', nlpState);
+            }
+            // Respiratory rate
+            if ((textLower.includes('respiratory rate') || textLower.includes(' rr ') || e.loinc === '9279-1') && treeLeafIds.includes('resp_rate')) {
+              nlpUpdates.set('resp_rate', nlpState);
+            }
+            // pCO2 / hypercapnia
+            if ((textLower.includes('pco2') || textLower.includes('hypercapn') || e.loinc === '2019-8') && treeLeafIds.includes('hypercapnia')) {
+              nlpUpdates.set('hypercapnia', nlpState);
+            }
+            // pH / acidosis
+            if ((textLower.includes('ph ') || textLower.includes('acidosis') || e.loinc === '2744-1') && treeLeafIds.includes('acidosis')) {
+              nlpUpdates.set('acidosis', nlpState);
+            }
+            // Treatment failure / lower level care
+            if ((textLower.includes('nebulizer') || textLower.includes('failed') || textLower.includes('outpatient')) && treeLeafIds.includes('treatment_failure')) {
+              nlpUpdates.set('treatment_failure', nlpState);
+            }
+          }
+          if (nlpUpdates.size > 0) {
+            // Animate each update: flash the node active, then commit the state
+            let nlpDelay = 300;
+            for (const [nodeId, nodeState] of nlpUpdates) {
+              setTimeout(() => {
+                setActiveLeafIds(new Set([nodeId]));
+                setTimeout(() => {
+                  setCriteriaStates(prev => { const n = new Map(prev); n.set(nodeId, nodeState); return n; });
+                  setActiveLeafIds(new Set());
+                }, 800);
+              }, nlpDelay);
+              nlpDelay += 600;
+            }
+          }
+        } catch { /* ignore */ }
       }
     }
   }
@@ -548,136 +605,65 @@ export default function CaseReview() {
   async function startReview() {
     setPhase('loading_criteria');
     setSteps(INITIAL_STEPS.map(s => ({ ...s })));
-    setLog([]);
-    setTreeResults([]);
-    setCriteriaStates(new Map());
-    setCriteriaEvidence(new Map());
-    setActiveLeafIds(new Set());
-    setRunId(null);
-    setDetermination(null);
-    setErrorMsg('');
-    setSeenToolIds(new Set());
+    setLog([]); setTreeResults([]); setCriteriaStates(new Map()); setCriteriaEvidence(new Map());
+    setActiveLeafIds(new Set()); setRunId(null); setDetermination(null); setErrorMsg(''); setSeenToolIds(new Set());
     if (pollRef.current) clearInterval(pollRef.current);
-
     try {
-      // Step A: Fetch case info to get diagnosis code
-      appendLog({ ts: nowTs(), tool: 'Loading case info...', status: 'running' });
+      appendLog({ ts: nowTs(), tool: 'Loading case information…', status: 'running', type: 'system' });
       const caseInfo = await api.reviews.get(caseNumber).catch(() => null);
-
-      // Step B: Load criteria tree
-      appendLog({ ts: nowTs(), tool: 'Loading criteria tree...', status: 'running' });
+      appendLog({ ts: nowTs(), tool: 'Building criteria decision tree…', status: 'running', type: 'system' });
       const params = new URLSearchParams({ serviceType: 'INPATIENT' });
       if (caseInfo?.primaryDiagnosisCode) params.set('icd10', caseInfo.primaryDiagnosisCode);
-
       const token = localStorage.getItem('lucidreview_token') ?? '';
-      const treesResponse = await fetch(`/api/criteria-tree?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const trees: TreeResult[] = treesResponse.ok ? await treesResponse.json() as TreeResult[] : [];
+      const treesResp = await fetch(`/api/criteria-tree?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const trees: TreeResult[] = treesResp.ok ? await treesResp.json() as TreeResult[] : [];
       setTreeResults(trees);
-
-      if (!trees.length) {
-        appendLog({ ts: nowTs(), tool: 'No criteria tree found — using agent evaluation only', status: 'done' });
-      } else {
-        appendLog({ ts: nowTs(), tool: 'criteria_tree', status: 'done', preview: `${trees.length} criteria set(s) loaded` });
-      }
-
+      if (!trees.length) appendLog({ ts: nowTs(), tool: 'No matching criteria tree — using agent evaluation', status: 'done', type: 'system' });
+      else appendLog({ ts: nowTs(), tool: 'criteria_tree', status: 'done', preview: `${trees.length} criteria set(s) loaded`, type: 'system' });
       setPhase('running');
-
-      // Step C: Trigger agent run
-      appendLog({ ts: nowTs(), tool: 'Starting AI review agent...', status: 'running' });
+      appendLog({ ts: nowTs(), tool: 'Initializing AI review agent…', status: 'running', type: 'system' });
       const { runId: rid } = await api.reviews.runAgent(caseNumber);
       setRunId(rid);
-      appendLog({ ts: nowTs(), tool: 'agent_start', status: 'done', preview: `Run ID: ${rid.slice(0, 8)}...` });
-
+      appendLog({ ts: nowTs(), tool: 'agent_start', status: 'done', preview: `Run ${rid.slice(0, 8)}…`, type: 'system' });
       const treeLeafIds = trees.length ? collectLeafIds(trees[0].tree) : [];
-
-      // Step D: Poll trace for updates
-      let lastToolCount = 0;
-      let lastTurnCount = 0;
-
+      let lastToolCount = 0, lastTurnCount = 0;
       pollRef.current = setInterval(() => {
         void (async () => {
           try {
-            const [runStatus, trace] = await Promise.all([
-              api.agentRuns.get(rid),
-              api.agentRuns.getTrace(rid),
-            ]);
-
-            // Surface new AI reasoning text from assistant turns
-            const allTurns = trace.turns;
-            if (allTurns.length > lastTurnCount) {
-              const newTurns = allTurns.slice(lastTurnCount);
-              lastTurnCount = allTurns.length;
+            const [runStatus, trace] = await Promise.all([api.agentRuns.get(rid), api.agentRuns.getTrace(rid)]);
+            if (trace.turns.length > lastTurnCount) {
+              const newTurns = trace.turns.slice(lastTurnCount); lastTurnCount = trace.turns.length;
               for (const { turn } of newTurns) {
                 const t = turn as unknown as Record<string, unknown>;
                 if (t['role'] !== 'assistant') continue;
                 try {
-                  const content = typeof t['content'] === 'string'
-                    ? JSON.parse(t['content'] as string)
-                    : t['content'];
+                  const content = typeof t['content'] === 'string' ? JSON.parse(t['content'] as string) : t['content'];
                   if (Array.isArray(content)) {
                     for (const block of content) {
-                      // Bedrock text blocks: { text: "..." } — no 'type' field
-                      // toolUse blocks: { toolUse: { name, ... } }
-                      const text = block?.text ?? block?.['text'];
-                      const isToolUse = !!(block?.toolUse ?? block?.['toolUse']);
-                      if (text && !isToolUse && String(text).trim()) {
-                        appendLog({
-                          ts: nowTs(),
-                          tool: '🤖 AI',
-                          status: 'done',
-                          preview: String(text).slice(0, 300),
-                        });
-                      }
+                      const text = block?.text ?? block?.['text']; const isToolUse = !!(block?.toolUse ?? block?.['toolUse']);
+                      if (text && !isToolUse && String(text).trim()) appendLog({ ts: nowTs(), tool: 'AI Reasoning', status: 'done', preview: String(text).slice(0, 400), type: 'ai' });
                     }
                   }
                 } catch { /* ignore */ }
               }
             }
-
-            // Flatten all tool calls from all turns
             const allToolCalls = trace.turns.flatMap(t => t.toolCalls);
-
             if (allToolCalls.length > lastToolCount) {
-              const newCalls = allToolCalls.slice(lastToolCount);
-              // Show currently running tool as "running" in workflow steps
               const lastCall = allToolCalls[allToolCalls.length - 1];
-              if (lastCall) {
-                const lc = lastCall as unknown as Record<string, unknown>;
-                markStep(String(lc['toolName'] ?? lc['tool_name'] ?? ''), 'running');
-              }
-              processToolCalls(newCalls as AgentToolCall[], treeLeafIds);
+              if (lastCall) { const lc = lastCall as unknown as Record<string, unknown>; markStep(String(lc['toolName'] ?? lc['tool_name'] ?? ''), 'running'); }
+              processToolCalls(allToolCalls.slice(lastToolCount) as AgentToolCall[], treeLeafIds);
               lastToolCount = allToolCalls.length;
             }
-
             if (runStatus.status === 'completed' || runStatus.status === 'failed') {
               clearInterval(pollRef.current!);
               setSteps(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'done' } : s));
-
               if (runStatus.status === 'completed') {
-                // Use determination from run status if not already set via tool calls
-                if (runStatus.determination) {
-                  const det = runStatus.determination;
-                  const outKey = det.decision ?? '';
-                  setDetermination(outKey);
-                  setConfidence(det.confidence ?? 0);
-                }
+                if (runStatus.determination) { setDetermination(runStatus.determination.decision ?? ''); setConfidence(runStatus.determination.confidence ?? 0); }
                 setPhase('done');
-                appendLog({
-                  ts: nowTs(),
-                  tool: 'Review complete',
-                  status: 'done',
-                  preview: `${trace.turns.length} turns`,
-                });
-              } else {
-                setPhase('error');
-                setErrorMsg(runStatus.error ?? 'Agent run failed');
-              }
+                appendLog({ ts: nowTs(), tool: 'Review complete', status: 'done', preview: `${trace.turns.length} agent turns`, type: 'system' });
+              } else { setPhase('error'); setErrorMsg(runStatus.error ?? 'Agent run failed'); }
             }
-          } catch {
-            // Polling error — ignore, will retry on next tick
-          }
+          } catch { /* polling error — retry */ }
         })();
       }, 3000);
     } catch (e: unknown) {
@@ -687,264 +673,472 @@ export default function CaseReview() {
     }
   }
 
+  // Auto-start when the URL provides a ?case= param
+  useEffect(() => {
+    if (searchParams.get('case') && !autoStarted.current) {
+      autoStarted.current = true;
+      void startReview();
+    }
+  // startReview is stable — it only closes over refs and setters; searchParams is set once on mount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function reset() {
     if (pollRef.current) clearInterval(pollRef.current);
-    setPhase('idle');
-    setSteps(INITIAL_STEPS.map(s => ({ ...s })));
-    setLog([]);
-    setTreeResults([]);
-    setCriteriaStates(new Map());
-    setCriteriaEvidence(new Map());
-    setActiveLeafIds(new Set());
-    setRunId(null);
-    setDetermination(null);
-    setErrorMsg('');
+    setPhase('idle'); setSteps(INITIAL_STEPS.map(s => ({ ...s }))); setLog([]); setTreeResults([]);
+    setCriteriaStates(new Map()); setCriteriaEvidence(new Map()); setActiveLeafIds(new Set());
+    setRunId(null); setDetermination(null); setErrorMsg('');
   }
 
-  // Cleanup interval on unmount
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
-  const outcomeConfig =
-    determination && isOutcomeKey(determination)
-      ? OUTCOME_CONFIG[determination]
-      : null;
+  const outcomeConfig = determination && isOutcomeKey(determination) ? OUTCOME_CONFIG[determination] : null;
+  const isActive = phase === 'running' || phase === 'loading_criteria';
+  const doneCount = steps.filter(s => s.status === 'done').length;
+  const runningStep = steps.find(s => s.status === 'running');
+  const progressPct = ((doneCount + (runningStep ? 0.5 : 0)) / steps.length) * 100;
 
-  return (
-    <div className="flex flex-col h-full min-h-screen bg-slate-50">
-      {/* ── HEADER ── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 flex-wrap">
-        <h1 className="text-lg font-semibold text-slate-900 shrink-0">AI Case Review</h1>
-        <div className="flex items-center gap-2 flex-1">
-          <label className="text-xs font-medium text-slate-600 shrink-0">Case #</label>
-          <select
-            value={caseNumber}
-            onChange={e => { setCaseNumber(e.target.value); reset(); }}
-            disabled={phase === 'running' || phase === 'loading_criteria'}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-slate-100"
-          >
-            {KNOWN_CASES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <input
-            value={caseNumber}
-            onChange={e => setCaseNumber(e.target.value.toUpperCase())}
-            disabled={phase === 'running' || phase === 'loading_criteria'}
-            placeholder="or type a case number"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-48 disabled:bg-slate-100"
+  // ── IDLE STATE ────────────────────────────────────────────────────────────────
+  if (phase === 'idle') {
+    return (
+      <div className="flex h-full overflow-hidden" style={{ maxHeight: '100vh' }}>
+
+        {/* ══ LEFT: dark hero panel ══════════════════════════════════════ */}
+        <div className="relative flex w-[46%] shrink-0 flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 px-10 py-12">
+          {/* Background grid */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage:
+                'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+              backgroundSize: '44px 44px',
+            }}
           />
-        </div>
-        <div className="flex items-center gap-2">
-          {(phase === 'done' || phase === 'error') && (
-            <button
-              onClick={reset}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              <RotateCcw size={14} /> Reset
-            </button>
-          )}
-          <button
-            onClick={() => { void startReview(); }}
-            disabled={phase === 'running' || phase === 'loading_criteria' || !caseNumber.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300 transition-colors shadow-sm"
-          >
-            {phase === 'loading_criteria' || phase === 'running' ? (
-              <><Loader2 size={15} className="animate-spin" /> Running...</>
-            ) : (
-              <><Play size={15} /> Run Review</>
-            )}
-          </button>
-        </div>
-      </div>
+          {/* Glow blobs */}
+          <div className="pointer-events-none absolute -left-20 -top-20 h-80 w-80 rounded-full bg-blue-600/20 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-violet-600/15 blur-3xl" />
 
-      {/* ── BODY ── */}
-      <div className="flex flex-1 overflow-hidden">
+          {/* Top: logo */}
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/40">
+              <Activity size={20} className="text-white" strokeWidth={2.5} />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-white">LucidReview</div>
+              <div className="text-[10px] font-medium uppercase tracking-widest text-blue-300/60">UM Platform</div>
+            </div>
+          </div>
 
-        {/* ── LEFT: Workflow + Log ── */}
-        <div className="w-72 shrink-0 border-r border-slate-200 bg-white flex flex-col">
-          {/* Steps */}
-          <div className="p-4 border-b border-slate-100">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              Workflow Steps
+          {/* Middle: headline + bullets */}
+          <div className="relative z-10">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1">
+              <Sparkles size={11} className="text-blue-400" />
+              <span className="text-[11px] font-semibold text-blue-300">AI-Powered Analysis</span>
+            </div>
+            <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-white">
+              Intelligent<br />
+              <span className="text-blue-400">Prior Auth</span><br />
+              Review
+            </h1>
+            <p className="mb-8 max-w-xs text-sm text-slate-400 leading-relaxed">
+              The AI agent autonomously gathers evidence, evaluates coverage criteria, and recommends authorization decisions in real-time.
             </p>
-            <div className="space-y-1">
-              {steps.map(step => (
-                <div
-                  key={step.id}
-                  className={`flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition-colors ${
-                    step.status === 'running' ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <div className="mt-0.5 shrink-0">
-                    {step.status === 'done'    && <CheckCircle2 size={15} className="text-emerald-500" />}
-                    {step.status === 'running' && <Loader2 size={15} className="text-blue-500 animate-spin" />}
-                    {step.status === 'pending' && <Circle size={15} className="text-slate-300" />}
-                    {step.status === 'skipped' && <Circle size={15} className="text-slate-200" />}
+
+            {/* Feature bullets */}
+            <div className="space-y-4">
+              {[
+                { icon: Database, title: 'Multi-Source Data Gathering', body: 'Case info, clinical notes, attachments, FHIR records.' },
+                { icon: Brain, title: 'NLP & Clinical Intelligence', body: 'Entity extraction, diagnosis mapping, vitals parsing.' },
+                { icon: GitBranch, title: 'Live Criteria Decision Tree', body: 'CQL evaluation against payer policies with evidence trails.' },
+              ].map(({ icon: Icon, title, body }) => (
+                <div key={title} className="flex items-start gap-3.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/8 ring-1 ring-white/10">
+                    <Icon size={14} className="text-blue-400" />
                   </div>
-                  <div className="min-w-0">
-                    <p
-                      className={`text-xs font-medium ${
-                        step.status === 'running' ? 'text-blue-700' :
-                        step.status === 'done'    ? 'text-slate-700' :
-                                                    'text-slate-400'
-                      }`}
-                    >
-                      {step.id}. {step.label}
-                    </p>
-                    {step.detail && step.status === 'done' && (
-                      <p className="text-[10px] text-slate-400 truncate">{step.detail}</p>
-                    )}
+                  <div>
+                    <p className="text-xs font-semibold text-white">{title}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-400 leading-relaxed">{body}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* AI Log */}
-          <div className="flex-1 flex flex-col overflow-hidden p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-              AI Activity
-            </p>
-            <div ref={logRef} className="flex-1 overflow-y-auto space-y-1 font-mono text-[10px]">
-              {log.length === 0 && phase === 'idle' && (
-                <p className="text-slate-400 italic text-center mt-4">Click Run Review to start</p>
-              )}
-              {log.map((entry, i) => {
-                const isAI = entry.tool === '🤖 AI';
-                return (
-                  <div key={i} className={`${isAI ? 'mt-1 mb-1' : ''}`}>
-                    {isAI ? (
-                      /* AI reasoning block — full text, word-wrapped */
-                      <div className="rounded-md bg-violet-50 border border-violet-200 px-2 py-1.5">
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <span className="text-slate-400 text-[9px]">{entry.ts}</span>
-                          <span className="text-[9px] font-semibold text-violet-600">AI Reasoning</span>
-                        </div>
-                        <p className="text-[10px] text-violet-800 leading-relaxed whitespace-pre-wrap break-words">{entry.preview}</p>
-                      </div>
-                    ) : (
-                      <div className={`flex gap-1.5 ${
-                        entry.status === 'error'   ? 'text-red-500'  :
-                        entry.status === 'running' ? 'text-blue-500' : 'text-slate-500'
-                      }`}>
-                        <span className="text-slate-400 shrink-0">{entry.ts}</span>
-                        <span className={`shrink-0 ${
-                          entry.status === 'done'    ? 'text-emerald-600' :
-                          entry.status === 'running' ? 'text-blue-500'    : 'text-red-500'
-                        }`}>
-                          {entry.status === 'done' ? '✓' : entry.status === 'running' ? '▶' : '✗'}
-                        </span>
-                        <span className="truncate text-slate-600">{entry.tool}</span>
-                        {entry.preview && (
-                          <span className="text-slate-400 truncate">— {entry.preview}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {(phase === 'running' || phase === 'loading_criteria') && (
-                <div className="flex gap-1.5 text-blue-400">
-                  <span className="text-slate-400">{nowTs()}</span>
-                  <Loader2 size={10} className="animate-spin shrink-0 mt-0.5" />
-                  <span className="animate-pulse">Working...</span>
+          {/* Bottom: trust bar */}
+          <div className="relative z-10 flex items-center gap-5">
+            {['HIPAA Compliant', 'HL7 FHIR R4', 'CMS Policies'].map(label => (
+              <div key={label} className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <CheckCircle2 size={11} className="text-slate-600" />
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ══ RIGHT: form + pipeline ═════════════════════════════════════ */}
+        <div className="flex flex-1 flex-col overflow-hidden bg-slate-50">
+          <div className="flex h-full flex-col justify-center px-10 py-6 max-w-lg mx-auto w-full animate-fade-up">
+
+            {/* Form heading */}
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-slate-900">Start a Review</h2>
+              <p className="mt-0.5 text-sm text-slate-500">Select a case to begin the AI analysis workflow.</p>
+            </div>
+
+            {/* Search input */}
+            <CaseSearchInput value={caseNumber} onChange={setCaseNumber} />
+
+            {/* CTA — premium gradient button */}
+            <button
+              onClick={() => { void startReview(); }}
+              disabled={!caseNumber.trim()}
+              className="group relative mb-5 flex w-full overflow-hidden rounded-xl py-3 text-sm font-bold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                background: caseNumber.trim()
+                  ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #4f46e5 100%)'
+                  : '#e2e8f0',
+                boxShadow: caseNumber.trim()
+                  ? '0 4px 24px -4px rgba(37,99,235,0.5), 0 1px 3px rgba(37,99,235,0.3), inset 0 1px 0 rgba(255,255,255,0.15)'
+                  : 'none',
+              }}
+            >
+              {/* Shimmer overlay on hover */}
+              <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              <div className={cn('flex w-full items-center gap-2.5 px-5', !caseNumber.trim() && 'text-slate-400')}>
+                {/* Left: play icon in circle */}
+                <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', caseNumber.trim() ? 'bg-white/20' : 'bg-slate-300')}>
+                  <Play size={12} fill="currentColor" className={caseNumber.trim() ? 'text-white' : 'text-slate-400'} />
                 </div>
+                <div className="flex-1 text-left">
+                  <div className={cn('text-sm font-bold leading-none', caseNumber.trim() ? 'text-white' : 'text-slate-400')}>
+                    Run AI Review
+                  </div>
+                  {caseNumber.trim() && (
+                    <div className="mt-0.5 font-mono text-[11px] text-white/60 leading-none">
+                      {caseNumber}
+                    </div>
+                  )}
+                </div>
+                <ArrowRight size={16} className={cn('shrink-0 transition-transform group-hover:translate-x-0.5', caseNumber.trim() ? 'text-white/70' : 'text-slate-400')} />
+              </div>
+            </button>
+
+            {/* Pipeline preview */}
+            <div className="flex flex-col min-h-0 flex-1">
+              <div className="mb-2 flex items-center gap-3 shrink-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">What happens next</p>
+                <div className="h-px flex-1 bg-slate-200" />
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm flex-1 flex flex-col">
+                {INITIAL_STEPS.map((step, idx) => {
+                  const Icon = step.icon;
+                  const isLast = idx === INITIAL_STEPS.length - 1;
+                  return (
+                    <div
+                      key={step.id}
+                      className={cn(
+                        'group flex flex-1 items-center gap-3 px-3.5 transition-colors hover:bg-blue-50/50',
+                        !isLast && 'border-b border-slate-100',
+                      )}
+                    >
+                      {/* Number */}
+                      <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-500 transition-colors group-hover:bg-blue-100 group-hover:text-blue-600" style={{ minWidth: '1.125rem', minHeight: '1.125rem' }}>
+                        {step.id}
+                      </span>
+                      {/* Icon */}
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-100 bg-slate-50 transition-colors group-hover:border-blue-100 group-hover:bg-blue-50">
+                        <Icon size={11} className="text-slate-500 transition-colors group-hover:text-blue-500" />
+                      </div>
+                      {/* Text */}
+                      <div className="flex-1 min-w-0 py-2">
+                        <p className="text-[11px] font-semibold text-slate-800 leading-tight">{step.label}</p>
+                        <p className="text-[10px] text-slate-400 truncate leading-tight">{step.description}</p>
+                      </div>
+                      {/* Pending dot */}
+                      <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-slate-300 group-hover:bg-blue-400 transition-colors" />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Outcome legend */}
+              <div className="mt-2.5 shrink-0 flex items-center justify-center gap-4 text-[10px] text-slate-400">
+                {[
+                  { color: 'bg-emerald-400', label: 'Auto-Approve' },
+                  { color: 'bg-violet-400', label: 'MD Review' },
+                  { color: 'bg-amber-400', label: 'More Info' },
+                  { color: 'bg-red-400', label: 'Deny' },
+                ].map(({ color, label }) => (
+                  <div key={label} className="flex items-center gap-1.5">
+                    <div className={cn('h-1.5 w-1.5 rounded-full', color)} />
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ACTIVE / DONE / ERROR LAYOUT ──────────────────────────────────────────────
+  return (
+    <div className="flex flex-col h-full min-h-screen bg-slate-50 overflow-hidden" style={{ maxHeight: '100vh' }}>
+
+      {/* ── TOPBAR ──────────────────────────────────────────────────────── */}
+      <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-3 flex items-center gap-4 z-10">
+        {/* Left */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', isActive ? 'bg-blue-600' : phase === 'done' ? 'bg-emerald-500' : 'bg-red-500')}>
+            {isActive ? <Loader2 size={15} className="text-white animate-spin" /> : phase === 'done' ? <CheckCircle2 size={15} className="text-white" /> : <AlertCircle size={15} className="text-white" />}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-slate-900 whitespace-nowrap">AI Case Review</span>
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700">{caseNumber}</span>
+              {runningStep && isActive && (
+                <span className="text-[11px] text-blue-600 animate-pulse whitespace-nowrap">→ {runningStep.label}…</span>
               )}
+              {phase === 'done' && <span className="text-[11px] text-emerald-600 font-medium whitespace-nowrap">Analysis complete</span>}
             </div>
           </div>
         </div>
 
-        {/* ── RIGHT: Criteria Tree ── */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {phase === 'idle' && (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <div className="rounded-full bg-blue-100 p-4 mb-4">
-                <Play size={28} className="text-blue-500" />
-              </div>
-              <p className="text-slate-600 font-medium">Select a case and click Run Review</p>
-              <p className="text-sm text-slate-400 mt-1">
-                The AI will gather clinical data, evaluate criteria, and propose a determination.
-              </p>
+        {/* Center: progress bar */}
+        {(isActive || phase === 'done') && (
+          <div className="flex flex-1 max-w-sm items-center gap-2.5 mx-4">
+            <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div
+                className={cn('h-full rounded-full transition-all duration-700 ease-out', phase === 'done' ? 'bg-emerald-500' : 'bg-blue-500')}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[11px] font-semibold text-slate-500 tabular-nums">{doneCount}/{steps.length}</span>
+          </div>
+        )}
+
+        {/* Right: actions */}
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          {(phase === 'done' || phase === 'error') && (
+            <button onClick={reset} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
+              <RotateCcw size={12} /> New Review
+            </button>
+          )}
+          {isActive && (
+            <div className="flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+              </span>
+              <span className="text-xs font-semibold text-blue-600">Analyzing</span>
             </div>
           )}
+        </div>
+      </div>
 
-          {phase === 'error' && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-6 flex items-start gap-3">
-              <AlertCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-red-700">Review failed</p>
-                <p className="text-sm text-red-600 mt-0.5">{errorMsg}</p>
+      {/* ── ERROR BANNER ────────────────────────────────────────────────── */}
+      {phase === 'error' && (
+        <div className="mx-5 mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 animate-fade-in shrink-0">
+          <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-red-700 text-sm">Review failed</p>
+            <p className="mt-0.5 text-xs text-red-600">{errorMsg}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── THREE-PANEL BODY ─────────────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* ═══ PANEL 1: PROCESS STEPS (260px) ══════════════════════════════ */}
+        <div className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
+          <div className="border-b border-slate-100 px-4 py-3 shrink-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Process Steps</p>
+            {/* Mini progress */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-700', phase === 'done' ? 'bg-emerald-400' : 'bg-blue-400')}
+                  style={{ width: `${progressPct}%` }}
+                />
               </div>
+              <span className="text-[10px] font-semibold text-slate-500 tabular-nums">{Math.round(progressPct)}%</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pt-4 scrollbar-thin">
+            {steps.map((step, i) => <StepItem key={step.id} step={step} isLast={i === steps.length - 1} />)}
+          </div>
+          {runId && (
+            <div className="border-t border-slate-100 px-4 py-2.5 shrink-0">
+              <p className="text-[10px] text-slate-400">Run: <span className="font-mono">{runId.slice(0, 12)}…</span></p>
             </div>
           )}
+        </div>
 
-          {(phase === 'loading_criteria' || phase === 'running' || phase === 'done') && (
-            <div>
-              {/* Outcome banner */}
-              {determination && outcomeConfig ? (
-                <div className={`${outcomeConfig.bg} rounded-xl mb-6 p-4 text-white shadow-md`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold opacity-80 uppercase tracking-wider mb-0.5">
-                        Determination
-                      </p>
-                      <p className="text-2xl font-bold">{outcomeConfig.label}</p>
+        {/* ═══ PANEL 2: AI TERMINAL (288px) ════════════════════════════════ */}
+        <div className="flex w-72 shrink-0 flex-col border-r border-slate-200 overflow-hidden">
+          {/* Terminal header */}
+          <div
+            className="flex items-center justify-between border-b border-slate-700 bg-slate-900 px-4 py-2.5 cursor-pointer shrink-0 select-none"
+            onClick={() => setLogCollapsed(v => !v)}
+          >
+            <div className="flex items-center gap-2">
+              {/* Traffic lights */}
+              <div className="flex items-center gap-1.5 mr-1">
+                <div className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+                <div className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+              </div>
+              <Terminal size={12} className="text-slate-500" />
+              <span className="text-xs font-semibold text-slate-300">AI Activity Log</span>
+              {isActive && (
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-400" />
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-600">{log.length}</span>
+              {logCollapsed ? <ChevronDown size={12} className="text-slate-500" /> : <ChevronUp size={12} className="text-slate-500" />}
+            </div>
+          </div>
+
+          {/* Terminal body */}
+          {!logCollapsed && (
+            <div
+              ref={logRef}
+              className="flex-1 overflow-y-auto bg-slate-950 p-3 space-y-0.5"
+              style={{ fontFamily: '"JetBrains Mono","Fira Code",ui-monospace,monospace', fontSize: '11px', scrollbarColor: '#334155 transparent', scrollbarWidth: 'thin' }}
+            >
+              {log.length === 0 && (
+                <div className="flex items-center gap-2 text-slate-600 mt-4 px-1">
+                  <span className="text-slate-700">$</span>
+                  <span className="animate-pulse text-slate-500">Initializing agent…</span>
+                  <span className="animate-blink text-slate-600">▊</span>
+                </div>
+              )}
+              {log.map((entry, i) => {
+                if (entry.type === 'ai') return (
+                  <div key={i} className="mt-2 mb-2 rounded-lg bg-violet-950/70 border border-violet-800/40 p-2.5 animate-fade-in">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Brain size={10} className="text-violet-400" />
+                      <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wide">AI Reasoning</span>
+                      <span className="ml-auto text-[9px] text-slate-600">{entry.ts}</span>
                     </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-bold opacity-90">{Math.round(confidence * 100)}%</p>
-                      <p className="text-xs opacity-70">confidence</p>
+                    <p className="text-[11px] text-violet-200 leading-relaxed whitespace-pre-wrap break-words">{entry.preview}</p>
+                  </div>
+                );
+                if (entry.type === 'system') return (
+                  <div key={i} className="flex items-center gap-2 text-slate-600 py-0.5 animate-fade-in">
+                    <span className="shrink-0 text-slate-700 text-[9px] tabular-nums">{entry.ts}</span>
+                    <span className="text-slate-700">›</span>
+                    <span className="text-slate-500 truncate italic">{entry.tool}</span>
+                    {entry.preview && <span className="text-slate-700 truncate">— {entry.preview}</span>}
+                  </div>
+                );
+                return (
+                  <div key={i} className="flex gap-2 items-start py-0.5 animate-fade-in">
+                    <span className="shrink-0 text-slate-700 text-[9px] tabular-nums pt-px">{entry.ts}</span>
+                    <span className={cn('shrink-0 pt-px', entry.status === 'done' ? 'text-emerald-400' : entry.status === 'running' ? 'text-blue-400' : 'text-red-400')}>
+                      {entry.status === 'done' ? '✓' : entry.status === 'running' ? '▶' : '✗'}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span className={cn(entry.status === 'done' ? 'text-emerald-300' : entry.status === 'running' ? 'text-blue-300' : 'text-red-400')}>
+                        {entry.tool}
+                      </span>
+                      {entry.preview && <span className="ml-1.5 text-slate-600">— {entry.preview}</span>}
                     </div>
                   </div>
-                  <div className="mt-3 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-white/80 rounded-full"
-                      style={{ width: `${confidence * 100}%` }}
-                    />
+                );
+              })}
+              {isActive && (
+                <div className="flex items-center gap-2 py-0.5 text-blue-500 animate-fade-in">
+                  <span className="text-slate-700 text-[9px] tabular-nums">{nowTs()}</span>
+                  <Loader2 size={9} className="animate-spin shrink-0" />
+                  <span className="animate-pulse text-blue-400">Processing…</span>
+                </div>
+              )}
+            </div>
+          )}
+          {logCollapsed && (
+            <div className="flex-1 flex items-center justify-center bg-slate-950">
+              <p className="text-[11px] text-slate-600">Terminal hidden</p>
+            </div>
+          )}
+        </div>
+
+        {/* ═══ PANEL 3: CRITERIA TREE + DETERMINATION (flex-1) ═════════════ */}
+        <div className="flex-1 overflow-y-auto bg-slate-50 scrollbar-thin">
+          <div className="p-5 space-y-4">
+
+            {/* ── Determination outcome card ── */}
+            {determination && outcomeConfig ? (
+              <div className={cn('rounded-2xl p-5 text-white shadow-lg animate-fade-up', outcomeConfig.cssClass)}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <CheckCircle2 size={18} className="text-white/80" />
+                      <p className="text-xs font-bold uppercase tracking-widest text-white/70">AI Determination</p>
+                    </div>
+                    <p className="text-2xl font-extrabold tracking-tight">{outcomeConfig.label}</p>
+                    <p className="mt-0.5 text-sm text-white/75">{outcomeConfig.sublabel}</p>
                   </div>
-                  <p className="mt-2 text-xs opacity-80">
-                    {determination === 'AUTO_APPROVE' &&
-                      'All required criteria are met. This case qualifies for automatic approval — subject to human reviewer confirmation.'}
-                    {determination === 'MD_REVIEW' &&
-                      'One or more criteria could not be confirmed. Physician review is required before any adverse determination.'}
-                    {determination === 'MORE_INFO' &&
-                      'Some criteria require additional clinical documentation. Please provide the missing information.'}
-                    {determination === 'DENY' &&
-                      'Coverage criteria are not met. This case is recommended for denial — requires MD review.'}
+                  <div className="text-right shrink-0">
+                    <p className="text-4xl font-black tabular-nums">{Math.round(confidence * 100)}<span className="text-xl font-bold opacity-70">%</span></p>
+                    <p className="text-xs text-white/60 mt-0.5">confidence</p>
+                  </div>
+                </div>
+                {/* Confidence bar */}
+                <div className="mt-4 h-2 rounded-full bg-white/20 overflow-hidden">
+                  <div className="h-full rounded-full bg-white/60 transition-all duration-1000 ease-out" style={{ width: `${confidence * 100}%` }} />
+                </div>
+                <p className="mt-3 text-xs text-white/75 leading-relaxed">{outcomeConfig.description}</p>
+              </div>
+            ) : isActive ? (
+              /* Loading state placeholder */
+              <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-5 flex items-center gap-4 animate-fade-in">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+                  <Loader2 size={22} className="text-blue-500 animate-spin" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-700 text-sm">
+                    {phase === 'loading_criteria' ? 'Building criteria decision tree…' : 'AI is analyzing the case…'}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {runningStep ? `Currently: ${runningStep.label} — ${runningStep.description}` : 'Preparing analysis environment…'}
                   </p>
                 </div>
-              ) : (phase === 'running' || phase === 'loading_criteria') ? (
-                <div className="rounded-xl border-2 border-dashed border-slate-200 mb-6 p-4 flex items-center gap-3 text-slate-400">
-                  <Loader2 size={18} className="animate-spin text-blue-400 shrink-0" />
-                  <span className="text-sm">
-                    {phase === 'loading_criteria' ? 'Loading criteria...' : 'AI is reviewing the case...'}
-                  </span>
-                </div>
-              ) : null}
+              </div>
+            ) : null}
 
-              {/* Criteria tree */}
-              {treeResults.length > 0 ? (
-                treeResults.map((result, i) => (
-                  <div key={i} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
-                          Coverage Policy
-                        </p>
-                        <p className="text-sm font-semibold text-slate-800">{result.policy.title}</p>
+            {/* ── Criteria decision tree ── */}
+            {treeResults.length > 0 ? (
+              treeResults.map((result, i) => (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden animate-fade-up">
+                  {/* Tree header */}
+                  <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <GitBranch size={14} className="text-slate-500" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Coverage Policy</p>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 shrink-0">
-                        {result.policy.cmsId && (
-                          <span className="rounded border border-slate-200 px-2 py-0.5 text-[11px] font-mono text-slate-500">
-                            {result.policy.cmsId}
-                          </span>
-                        )}
-                        <span className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
-                          {result.criteriaSet.scopeSetting}
-                        </span>
-                      </div>
+                      <p className="text-sm font-bold text-slate-900">{result.policy.title}</p>
                     </div>
+                    <div className="flex flex-wrap gap-1.5 shrink-0">
+                      {result.policy.cmsId && (
+                        <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 font-mono text-[11px] text-slate-500">
+                          {result.policy.cmsId}
+                        </span>
+                      )}
+                      <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500">
+                        {result.criteriaSet.scopeSetting}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Tree body */}
+                  <div className="p-4">
                     <AutoTreeNode
                       node={result.tree}
                       states={criteriaStates}
@@ -952,15 +1146,22 @@ export default function CaseReview() {
                       activeLeafIds={activeLeafIds}
                     />
                   </div>
-                ))
-              ) : (phase === 'running' || phase === 'done') ? (
-                <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-400 text-sm">
-                  No criteria tree found for this case's diagnosis codes.
-                  {runId && <p className="text-xs mt-1">Run ID: {runId}</p>}
                 </div>
-              ) : null}
-            </div>
-          )}
+              ))
+            ) : (phase === 'running' || phase === 'done') ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm animate-fade-in">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                    <GitBranch size={20} className="text-slate-400" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-600">No criteria tree found for this case's diagnosis codes.</p>
+                  <p className="text-xs text-slate-400">The AI agent will evaluate the case using its training and policy knowledge.</p>
+                  {runId && <p className="text-[11px] font-mono text-slate-400 mt-1">Run ID: {runId}</p>}
+                </div>
+              </div>
+            ) : null}
+
+          </div>
         </div>
       </div>
     </div>
