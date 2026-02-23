@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import CriteriaTreeView, { type TreeNode } from '../components/CriteriaTreeView.tsx';
+import QuickReferencePanel from '../components/QuickReferencePanel.tsx';
 
 // Known common ICD-10 codes for quick selection
 const QUICK_CODES = [
@@ -12,7 +13,14 @@ const QUICK_CODES = [
 
 interface TreeResult {
   policy: { id: string; title: string; policyType: string; cmsId: string | null; sourceUrl: string | null };
-  criteriaSet: { id: string; criteriaSetId: string; title: string; scopeSetting: string; scopeRequestType: string; cqlLibraryFhirId: string | null };
+  criteriaSet: {
+    id: string;
+    criteriaSetId: string;
+    title: string;
+    scopeSetting: string;
+    scopeRequestType: string;
+    cqlLibraryFhirId: string | null;
+  };
   tree: TreeNode;
   matchedOn: { diagnosisCodes: string[]; serviceType?: string };
 }
@@ -28,53 +36,104 @@ export default function CoverageCheck() {
 
   const token = localStorage.getItem('lucidreview_token');
 
-  async function handleSearch(e?: React.FormEvent) {
+  // Keep a ref to the latest field values so the programmatic search path can
+  // read them synchronously after a state update that hasn't flushed yet.
+  const icd10Ref = useRef(icd10);
+  const cptRef = useRef(cpt);
+  const serviceTypeRef = useRef(serviceType);
+
+  // Keep refs in sync with state
+  icd10Ref.current = icd10;
+  cptRef.current = cpt;
+  serviceTypeRef.current = serviceType;
+
+  // Core search logic — accepts optional override values so callers that just
+  // set state can pass the new values directly without waiting for a re-render.
+  const runSearch = useCallback(
+    async (overrides?: { icd10?: string; cpt?: string; serviceType?: string }) => {
+      const resolvedIcd10 = overrides?.icd10 ?? icd10Ref.current;
+      const resolvedCpt = overrides?.cpt ?? cptRef.current;
+      const resolvedServiceType = overrides?.serviceType ?? serviceTypeRef.current;
+
+      if (!resolvedIcd10 && !resolvedCpt) {
+        setError('Enter at least one ICD-10 or CPT code.');
+        return;
+      }
+      setError('');
+      setLoading(true);
+      setSearched(true);
+      try {
+        const params = new URLSearchParams();
+        if (resolvedIcd10) params.set('icd10', resolvedIcd10.trim());
+        if (resolvedCpt) params.set('cpt', resolvedCpt.trim());
+        if (resolvedServiceType) params.set('serviceType', resolvedServiceType);
+        const resp = await fetch(`/api/criteria-tree?${params}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data: TreeResult[] = await resp.json();
+        setResults(data);
+      } catch {
+        setError('Failed to fetch criteria. Check that the server is running.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token],
+  );
+
+  function handleSearch(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!icd10 && !cpt) { setError('Enter at least one ICD-10 or CPT code.'); return; }
-    setError('');
-    setLoading(true);
-    setSearched(true);
-    try {
-      const params = new URLSearchParams();
-      if (icd10) params.set('icd10', icd10.trim());
-      if (cpt) params.set('cpt', cpt.trim());
-      if (serviceType) params.set('serviceType', serviceType);
-      const resp = await fetch(`/api/criteria-tree?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data: TreeResult[] = await resp.json();
-      setResults(data);
-    } catch {
-      setError('Failed to fetch criteria. Check that the server is running.');
-    } finally {
-      setLoading(false);
-    }
+    void runSearch();
   }
 
-  function applyQuickCode(q: typeof QUICK_CODES[number]) {
-    setIcd10(q.icd10 || '');
-    setCpt(q.cpt || '');
-    setServiceType(q.serviceType || '');
+  function applyQuickCode(q: (typeof QUICK_CODES)[number]) {
+    setIcd10(q.icd10 ?? '');
+    setCpt(q.cpt ?? '');
+    setServiceType(q.serviceType ?? '');
     setResults(null);
     setSearched(false);
   }
 
+  // Called by QuickReferencePanel when the user selects a code or clicks "Use".
+  // We update state immediately AND pass the new values directly to runSearch so
+  // the search fires with the right values without waiting for React to flush.
+  function handleApplyCode(icd10Code?: string, cptCode?: string) {
+    const nextIcd10 = icd10Code
+      ? icd10Ref.current
+        ? `${icd10Ref.current}, ${icd10Code}`
+        : icd10Code
+      : icd10Ref.current;
+
+    const nextCpt = cptCode ?? cptRef.current;
+
+    setIcd10(nextIcd10);
+    if (cptCode !== undefined) setCpt(nextCpt);
+
+    void runSearch({ icd10: nextIcd10, cpt: nextCpt });
+  }
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-screen-xl mx-auto px-4 py-8">
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-slate-900">Coverage Criteria Check</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Enter a diagnosis or procedure code to see the coverage criteria decision tree — no patient required.
+          Enter a diagnosis or procedure code to see the coverage criteria decision tree — no patient
+          required.
         </p>
       </div>
 
       {/* Search form */}
-      <form onSubmit={handleSearch} className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 mb-6">
+      <form
+        onSubmit={handleSearch}
+        className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 mb-6"
+      >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">ICD-10-CM Code(s)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              ICD-10-CM Code(s)
+            </label>
             <input
               value={icd10}
               onChange={e => setIcd10(e.target.value)}
@@ -106,7 +165,10 @@ export default function CoverageCheck() {
                 <option value="DME">DME</option>
                 <option value="HOME_HEALTH">Home Health</option>
               </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none" />
+              <ChevronDown
+                size={14}
+                className="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none"
+              />
             </div>
           </div>
         </div>
@@ -140,44 +202,66 @@ export default function CoverageCheck() {
         </div>
       </form>
 
-      {/* Results */}
-      {loading && (
-        <div className="text-center py-12 text-sm text-slate-500">Loading criteria...</div>
-      )}
+      {/* Two-column layout: results (left) + quick reference panel (right) */}
+      <div className="flex gap-6 items-start">
+        {/* LEFT: criteria tree results */}
+        <div className="flex-1 min-w-0">
+          {loading && (
+            <div className="text-center py-12 text-sm text-slate-500">Loading criteria...</div>
+          )}
 
-      {!loading && searched && results !== null && results.length === 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-          <p className="text-slate-500 text-sm">No coverage criteria found for these codes.</p>
-          <p className="text-slate-400 text-xs mt-1">
-            Try a different ICD-10 code, or run the CMS ingestion to load more policies.
-          </p>
-        </div>
-      )}
-
-      {!loading && results && results.length > 0 && (
-        <div className="space-y-6">
-          <p className="text-xs text-slate-500">
-            {results.length} criteria set{results.length !== 1 ? 's' : ''} found
-          </p>
-          {results.map((result, i) => (
-            <div key={`${i}-${icd10}-${cpt}`} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <div className="mb-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  {result.criteriaSet.title}
-                </span>
-              </div>
-              <CriteriaTreeView
-                tree={result.tree}
-                policyTitle={result.policy.title}
-                cmsId={result.policy.cmsId}
-                scopeSetting={result.criteriaSet.scopeSetting}
-                scopeRequestType={result.criteriaSet.scopeRequestType}
-                cqlLibraryFhirId={result.criteriaSet.cqlLibraryFhirId}
-              />
+          {!loading && searched && results !== null && results.length === 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+              <p className="text-slate-500 text-sm">No coverage criteria found for these codes.</p>
+              <p className="text-slate-400 text-xs mt-1">
+                Try a different ICD-10 code, or run the CMS ingestion to load more policies.
+              </p>
             </div>
-          ))}
+          )}
+
+          {!loading && results && results.length > 0 && (
+            <div className="space-y-6">
+              <p className="text-xs text-slate-500">
+                {results.length} criteria set{results.length !== 1 ? 's' : ''} found
+              </p>
+              {results.map((result, i) => (
+                <div
+                  key={`${i}-${icd10}-${cpt}`}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-5"
+                >
+                  <div className="mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      {result.criteriaSet.title}
+                    </span>
+                  </div>
+                  <CriteriaTreeView
+                    tree={result.tree}
+                    policyTitle={result.policy.title}
+                    cmsId={result.policy.cmsId}
+                    scopeSetting={result.criteriaSet.scopeSetting}
+                    scopeRequestType={result.criteriaSet.scopeRequestType}
+                    cqlLibraryFhirId={result.criteriaSet.cqlLibraryFhirId}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state before first search */}
+          {!loading && !searched && (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center">
+              <p className="text-slate-400 text-sm">
+                Enter codes above or pick from the Quick Reference panel to check coverage criteria.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* RIGHT: quick reference panel — always visible */}
+        <div className="w-80 shrink-0">
+          <QuickReferencePanel onApplyCode={handleApplyCode} />
+        </div>
+      </div>
     </div>
   );
 }

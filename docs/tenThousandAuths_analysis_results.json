@@ -1,0 +1,1319 @@
+{
+  "summary_statistics": {
+    "total_cases": 9974,
+    "cases_with_md_rec": 8644,
+    "approval_rate": 41.205003829461326,
+    "denial_rate": 58.79499617053868
+  },
+  "by_type": {
+    "TRANSPLANT": 458,
+    "OOA": 4794,
+    "NUTRITIONAL_SUPPLEMENT": 461,
+    "DME": 295,
+    "INPATIENT_LOC": 2248,
+    "PRESERVICE_OUTPATIENT": 578,
+    "NFDS": 829,
+    "OTHER": 187,
+    "PHARMACY": 90,
+    "SNF": 12,
+    "HOME_HEALTH": 22
+  },
+  "by_decision": {
+    "DENIED": 4606,
+    "UNCLEAR": 810,
+    "APPROVED": 3228,
+    "NO_MD_REC": 1330
+  },
+  "criteria_usage": {
+    "Medi-Cal": 8679,
+    "InterQual": 2381,
+    "SCAN Criteria": 91,
+    "LCD": 754,
+    "Medicare": 4632,
+    "EOC": 799,
+    "NCD": 567,
+    "MCG": 2833
+  },
+  "documentation_gaps": {
+    "Missing clinical info": 3821,
+    "Missing criteria documentation": 8244,
+    "Missing medical records": 1006,
+    "No response from provider": 169,
+    "Missing BMI": 7,
+    "Missing physician order": 244,
+    "Insufficient documentation": 94
+  },
+  "denial_reasons": {
+    "No medical necessity": 129,
+    "Coverage exclusion": 12,
+    "Not urgent/emergent": 257,
+    "Out of area - not covered": 20,
+    "Foreseen need": 70,
+    "Missing documentation": 434,
+    "No authorization": 3,
+    "Elective service OOA": 6,
+    "Does not meet criteria": 944
+  },
+  "approval_reasons": {
+    "Dialysis coverage": 226,
+    "Meets criteria": 268,
+    "Medically necessary": 462,
+    "Urgent/emergent": 117,
+    "Transplant criteria met": 28
+  },
+  "ooa_analysis": {
+    "total": 4794,
+    "approved": 1552,
+    "denied": 2434,
+    "urgent_emergent_approved": 300,
+    "foreseen_denied": 190,
+    "elective_denied": 62,
+    "missing_docs_denied": 106
+  },
+  "detailed_cases": [
+    {
+      "auth_id": "M4883880",
+      "request_type": "TRANSPLANT",
+      "decision": "DENIED",
+      "md_recommendation": "No call received.  Does not meet liver xplant critiera",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9372734",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "out of area eye surgery.  No other info provided to establish urgent or emegeent need or even medical necessity.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing clinical info",
+        "Missing criteria documentation",
+        "No response from provider"
+      ]
+    },
+    {
+      "auth_id": "M9893006",
+      "request_type": "NUTRITIONAL_SUPPLEMENT",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for nutritional supplements",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing BMI",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5350934",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "unable to find any RN summary.  No clear reason why case was sent to MD",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2405649",
+      "request_type": "NUTRITIONAL_SUPPLEMENT",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for nutritional supplements",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing BMI",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M8039764",
+      "request_type": "DME",
+      "decision": "UNCLEAR",
+      "md_recommendation": "Per the LCA:  \"There will be variation according to individual beneficiary need and their needs may vary over time. The table below lists the maximum number of items/units of service that are usually ",
+      "criteria": [
+        "LCD",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M6654238",
+      "request_type": "NUTRITIONAL_SUPPLEMENT",
+      "decision": "UNCLEAR",
+      "md_recommendation": "no physicians order/prescription for nutritional supplements.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing physician order"
+      ]
+    },
+    {
+      "auth_id": "M5761172",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "approve out of area dialysis and nephrology consult",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M8752759",
+      "request_type": "INPATIENT_LOC",
+      "decision": "UNCLEAR",
+      "md_recommendation": "Request to transfer to another facility for this 71 y/o F hx  ATN on HD since 9/5, IDDM, falls, syncope, encephalopathy/ celulitis/ osteo/ ATN- re-admitted Olympia Med Ctr 8/18/19 for   CHF/ PNA. Fami",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5827805",
+      "request_type": "DME",
+      "decision": "DENIED",
+      "md_recommendation": "request for foot orthotics for a member that neither has diabetes nor wears a leg brace.   As such, foot orthotics are not covered by Medicare or SCAN",
+      "criteria": [
+        "LCD",
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M7235478",
+      "request_type": "OOA",
+      "decision": "NO_MD_REC",
+      "md_recommendation": "",
+      "criteria": [
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing physician order"
+      ]
+    },
+    {
+      "auth_id": "M2695474",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "out of area request for a walker is neither urgent nor emergent and as such not a covered benefit out of area.",
+      "criteria": [],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M5055168",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "member is not confined to the home and as such home health is not medically necessary.  Furthermore out of area benefits are limited to urgent or emergent needs only.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M1460117",
+      "request_type": "PRESERVICE_OUTPATIENT",
+      "decision": "APPROVED",
+      "md_recommendation": "approve allogenic BMT for member with DLBCL.  Meets IQ and NCN criteria.<br/><br/>",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5264192",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3068802",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "please obtain this member's encounter data from the med group for the last 6 months to determine if request is a foreseen need",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M7857273",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "member unable/refuses to participate in skilled rehab and as such inpt SNF stay is only custodial in natures which is not a covered benefit.",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9547178",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "deny non formulary diabetic testing supplies due to absence of medical necessity",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5260963",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9851939",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "This is a foreseen need.  Member was in area and developed jaundice.  Evaluation was done and tests were ordered including ultrasound.  Member then left the area to go to her family for further testin",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M1002797",
+      "request_type": "NUTRITIONAL_SUPPLEMENT",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for nutritional supplements",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M1730008",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "non urgent non emergent self directed outpatient elective visit",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M7918320",
+      "request_type": "OOA",
+      "decision": "NO_MD_REC",
+      "md_recommendation": "",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M4132611",
+      "request_type": "OOA",
+      "decision": "NO_MD_REC",
+      "md_recommendation": "",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3298759",
+      "request_type": "PRESERVICE_OUTPATIENT",
+      "decision": "DENIED",
+      "md_recommendation": "1.  Dental implants should never require an expedited review.<br/>2. Dental implants are not a covered benefit of the Medicare program but may be covered if the member has a dental benefit.",
+      "criteria": [
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5027337",
+      "request_type": "NUTRITIONAL_SUPPLEMENT",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for nutritional supplements",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2355622",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9535363",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M8016748",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3743601",
+      "request_type": "OOA",
+      "decision": "NO_MD_REC",
+      "md_recommendation": "",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2298080",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4815874",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "approve acute admission in S Dakota hospital under DRG.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info"
+      ]
+    },
+    {
+      "auth_id": "M2300592",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "deny out of area admit for unknown reasons.  Unable to determine med nec or if directed by MG.  No response to requests for info.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "No response from provider"
+      ]
+    },
+    {
+      "auth_id": "M3993262",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "emergency air ambulance out of area to nearest facility that can provide necessary care",
+      "criteria": [],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4549411",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9447075",
+      "request_type": "OOA",
+      "decision": "NO_MD_REC",
+      "md_recommendation": "",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M7145060",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M7248857",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M6097809",
+      "request_type": "TRANSPLANT",
+      "decision": "APPROVED",
+      "md_recommendation": "member on dialysis, meets criteria for renal xplant, ok for listing.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3347459",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9696799",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "out of area non authorized admission to a hospital that refuses to provide documentation to support emergent need for admission.  No choice but to deny as need and coverage cannot be determined.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info"
+      ]
+    },
+    {
+      "auth_id": "M5146025",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "Member had a fall on 9/28 and went to Desert Regional Hospital, \\(in network\\)  who only provided a sling for right arm and a prescription of pain meds. Son was called from NV and picked mother up and",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal",
+        "EOC"
+      ],
+      "documentation_gaps": [
+        "Missing physician order",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3235714",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "out of area PT for strengthening and conditioning is neither urgent nor emergent and as such not covered out of area.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2148321",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M6481036",
+      "request_type": "OOA",
+      "decision": "NO_MD_REC",
+      "md_recommendation": "",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M4853837",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for acute inpatient rehab for member with shoulder fx.  Member does not require rehab in an inpatient setting for shoulder therapy, which may be accomplished as an outpatient.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing physician order"
+      ]
+    },
+    {
+      "auth_id": "M4859623",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "member to an OOA facility for head trauma after a fall.  Approve ER and observation but deny inpt admit due to absence of reasonable expectation of need for more than 2 overnights based upon limited a",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "No response from provider"
+      ]
+    },
+    {
+      "auth_id": "M1355620",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "elective outpatient visit to consult with gynecologist out of area is neither urgent nor emergent and as such not a covered OOA benefit.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3500839",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "approve additional 7 d LOS for SNF rehab.",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2917534",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "approve ER and observation but deny inpatient admission due to absence of reasonable expectation of need for more than 2 overnights.  Member left AMA",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4280084",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "request for out of area podiatrist for chronic neuropathy is neither urgent nor emergent and as such not a covered OOA benefit.",
+      "criteria": [],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M2009701",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "Member OOA for routine oncology visit not urgent or emergent. There for denied. Member is establishing care due to a move.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M5009025",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M1416180",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "approve OOA visits and testing as urgently needed.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5555851",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non fomulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M9980703",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9617579",
+      "request_type": "PRESERVICE_OUTPATIENT",
+      "decision": "UNCLEAR",
+      "md_recommendation": "Member with mucosal follicular lymphoma \\(MALT\\) s/p R CHOP then relapse and treated with rituximab.  recurrent symptoms with disease on both sides of diaphragm.  Received bendamustine with consolidat",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M5325390",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "member is only 40 miles out of area requesting HH.  Home health is available at the members home, not clear why the member is out of area however this request does not appear to be an emergency and it",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2504396",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "approve skilled level rehab in OOA SNF in Alabama?",
+      "criteria": [
+        "InterQual"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2822512",
+      "request_type": "OOA",
+      "decision": "NO_MD_REC",
+      "md_recommendation": "",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M1716581",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "member should be moved back to network if located a reasonable distance for transport and is stable enough.  If not then approve only ER until documentation provided to suppoort need for more than 2 o",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M7075215",
+      "request_type": "INPATIENT_LOC",
+      "decision": "UNCLEAR",
+      "md_recommendation": "ARU not indicated for this member.",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M6364266",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4368123",
+      "request_type": "OTHER",
+      "decision": "DENIED",
+      "md_recommendation": "Per NCD Indications and Limitations of Coverage for the requested item are limited to treatment of Muscle Atrophy<br/><br/>Coverage of NMES to treat muscle atrophy is limited to the treatment of disus",
+      "criteria": [
+        "NCD",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3233572",
+      "request_type": "TRANSPLANT",
+      "decision": "UNCLEAR",
+      "md_recommendation": "62 yo M S/P OLT\u2019 06 due to ETOH & HCV. S/P TIPs w/ Balloon Angioplasty 8/9/19 due to Portal Vein Thrombosis, also paracentesis & Balloon angioplasty.  MELD Score 15.  Divorced & estranged from 2 child",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing physician order"
+      ]
+    },
+    {
+      "auth_id": "M7677646",
+      "request_type": "NUTRITIONAL_SUPPLEMENT",
+      "decision": "UNCLEAR",
+      "md_recommendation": "request for nutritional supplements denied as member has not lost significant weight and does not have a BMI indicative of malnutrition.",
+      "criteria": [
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M6652943",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "deny inpatient admission due to absence of reasonable expectation of need for more than 2 overnights.  Ok as observation however.",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2692461",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "member requested an out of area cardiology consult which was denied.  Despite the denial the member chose to have the consult instead of appealing the denial .  As such the member is responsible for t",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5473494",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "deny inpatient admission but approve as observation for member involved in MVA but not acute findings",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M8905483",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "Member claims she was referred by her cardiologist \\(in-network\\) to see an out of network cardiologist. The MG issued a denial for the OOA cardiologist appointment, however instead of appealing as wo",
+      "criteria": [],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M2519883",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "records to be sent with any claim for retro review as there is nothing to review at present and patient has already been discharged",
+      "criteria": [
+        "InterQual",
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9852120",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5826926",
+      "request_type": "DME",
+      "decision": "DENIED",
+      "md_recommendation": "shower chairs are not medical items, they are hygiene items and are not covered as DME.",
+      "criteria": [
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M5264399",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "deny non formulary diabetic test strips due to absence of medical necessity.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M6019571",
+      "request_type": "NFDS",
+      "decision": "UNCLEAR",
+      "md_recommendation": "no medial necessity found in the records provided to support need for non formulary diabetic testing supplies",
+      "criteria": [],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M8203295",
+      "request_type": "INPATIENT_LOC",
+      "decision": "UNCLEAR",
+      "md_recommendation": "left a message for call back as requested.  Not clear what the purpose of the call is however",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M5552974",
+      "request_type": "OOA",
+      "decision": "UNCLEAR",
+      "md_recommendation": "meets u/e criteria",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4772447",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "out of country dialysis is NOT a covered benefit as it is neither urgent nor emergent.  It is a foreseen need and as such patient's are financially responsible for any such out of country dialysis.",
+      "criteria": [],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M9856102",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "approve continued skilled rehab",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M3755735",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "member with hip fracture out of country.  has worldwide coverage so this is clearly a covered benefit,  unreasonable to return a member from out of the country with a hip fx.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M4884852",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies regardless of member being on an insulin pump and/or CGM",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M5944788",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "inadequate info to approve inpatient admit  \\(diarrhea\\)",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing clinical info"
+      ]
+    },
+    {
+      "auth_id": "M4831454",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.  No evidence to support member allegation that non formulary supplies are superior",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M3045461",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M1889866",
+      "request_type": "OTHER",
+      "decision": "DENIED",
+      "md_recommendation": "deny home oxygen as member's O2 sat is 94% and does not meet LCD/NCD criteria",
+      "criteria": [
+        "LCD",
+        "NCD",
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M6604976",
+      "request_type": "DME",
+      "decision": "DENIED",
+      "md_recommendation": "member's most recent O2 sat of 94% \\(RA\\) which does not meet National Coverage Determination \\(NCD\\) for Home Use of Oxygen  \\(240.2\\).  \\(oxygen use is not medically necessary for patients with arte",
+      "criteria": [
+        "LCD",
+        "NCD",
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M1689268",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M2746030",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "out of area CT brain for dementia,  Not urgent or emergent and as such not a covered benefit for members that have permanently moved out of area.",
+      "criteria": [
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4733797",
+      "request_type": "OOA",
+      "decision": "APPROVED",
+      "md_recommendation": "no info upon which one can approve the request.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M8293927",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M7618100",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4276692",
+      "request_type": "DME",
+      "decision": "DENIED",
+      "md_recommendation": "portable oxygen concentration is redundant when used in the home as the member has already been provided with both a stationary concentrator and portable tanks for when the member is in the home but b",
+      "criteria": [
+        "LCD",
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing medical records",
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M9415667",
+      "request_type": "PRESERVICE_OUTPATIENT",
+      "decision": "APPROVED",
+      "md_recommendation": "ex smoker with end stage lung dz for single lung xplant.  Quit &gt; 10 yrs ago, negative CA screenings.  cardiac ok.  Meets criteria for xplant,  approve listing.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4328029",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "Request for strips of another brand which is not covered by SCAN",
+      "criteria": [],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M2172775",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "deny out of area inpatient admission for dyspnea.  no records were provided to establish need for more than 2 overnights. Approve ER only.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M3992356",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "no medical necessity for non formulary diabetic testing supplies.",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": []
+    },
+    {
+      "auth_id": "M7993508",
+      "request_type": "NFDS",
+      "decision": "DENIED",
+      "md_recommendation": "Request for NFDS, no physician No medical necessity for NFDS, Does not meet  SCAN criteria.",
+      "criteria": [
+        "Medi-Cal",
+        "SCAN Criteria"
+      ],
+      "documentation_gaps": [
+        "Missing clinical info",
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M4330993",
+      "request_type": "OOA",
+      "decision": "DENIED",
+      "md_recommendation": "no records provided upon which one can make an informed decision. Deny pending provision of records",
+      "criteria": [
+        "Medi-Cal"
+      ],
+      "documentation_gaps": [
+        "Missing medical records"
+      ]
+    },
+    {
+      "auth_id": "M9398009",
+      "request_type": "DME",
+      "decision": "UNCLEAR",
+      "md_recommendation": "Patient does not met criteria for Oxygen concentrator",
+      "criteria": [
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    },
+    {
+      "auth_id": "M8921017",
+      "request_type": "PRESERVICE_OUTPATIENT",
+      "decision": "DENIED",
+      "md_recommendation": "deny portable O2 concentrator as member already has both a stationary concentrator and portable tanks.  Portable concentrator is redundant and not needed in the home.",
+      "criteria": [
+        "Medi-Cal",
+        "Medicare"
+      ],
+      "documentation_gaps": [
+        "Missing criteria documentation"
+      ]
+    }
+  ]
+}
