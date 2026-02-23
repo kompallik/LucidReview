@@ -178,7 +178,7 @@ export default function CoverageCheck() {
     <div className="flex h-full overflow-hidden" style={{ maxHeight: '100vh' }}>
 
       {/* ══ LEFT: persistent dark hero ════════════════════════════════════════ */}
-      <div className="relative flex w-[38%] shrink-0 flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 px-8 py-10">
+      <div className="relative flex w-[32%] shrink-0 flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 px-8 py-10">
         {/* Grid overlay */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.04]"
@@ -242,7 +242,7 @@ export default function CoverageCheck() {
       {!searched ? (
         /* ── IDLE: search form ─────────────────────────────────────────────── */
         <div className="flex flex-1 flex-col overflow-hidden bg-slate-50">
-          <div className="flex h-full flex-col justify-center px-8 py-6 max-w-md mx-auto w-full animate-fade-up">
+          <div className="flex h-full flex-col justify-center px-10 py-8 max-w-2xl w-full animate-fade-up">
 
             <div className="mb-5">
               <h2 className="text-lg font-bold text-slate-900">Check Coverage Criteria</h2>
@@ -346,7 +346,7 @@ export default function CoverageCheck() {
                   All Combos
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2.5">
                 {QUICK_CODES.map(q => {
                   const { Icon } = q;
                   return (
@@ -358,10 +358,10 @@ export default function CoverageCheck() {
                     >
                       {/* Color top bar */}
                       <div className={`h-1 w-full ${q.color}`} />
-                      <div className="flex items-start gap-2.5 px-3 py-2.5">
+                      <div className="flex items-start gap-3 px-4 py-3.5">
                         {/* Icon */}
-                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${q.light}`}>
-                          <Icon size={15} strokeWidth={2} />
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${q.light}`}>
+                          <Icon size={17} strokeWidth={2} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-bold text-slate-800 leading-snug group-hover:text-indigo-700 line-clamp-2">{q.label}</p>
