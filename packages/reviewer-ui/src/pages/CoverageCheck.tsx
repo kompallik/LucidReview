@@ -102,19 +102,23 @@ export default function CoverageCheck() {
   // Called by QuickReferencePanel when the user selects a code or clicks "Use".
   // We update state immediately AND pass the new values directly to runSearch so
   // the search fires with the right values without waiting for React to flush.
-  function handleApplyCode(icd10Code?: string, cptCode?: string) {
-    const nextIcd10 = icd10Code
-      ? icd10Ref.current
-        ? `${icd10Ref.current}, ${icd10Code}`
-        : icd10Code
-      : icd10Ref.current;
+  function handleApplyCode(icd10Code?: string, cptCode?: string, serviceTypeOverride?: string) {
+    // For clinical combos, replace rather than append ICD-10 (full combo sets all three)
+    const isFullCombo = icd10Code !== undefined && cptCode !== undefined && serviceTypeOverride !== undefined;
+    const nextIcd10 = isFullCombo
+      ? icd10Code
+      : icd10Code
+        ? icd10Ref.current ? `${icd10Ref.current}, ${icd10Code}` : icd10Code
+        : icd10Ref.current;
 
     const nextCpt = cptCode ?? cptRef.current;
+    const nextServiceType = serviceTypeOverride ?? serviceTypeRef.current;
 
     setIcd10(nextIcd10);
     if (cptCode !== undefined) setCpt(nextCpt);
+    if (serviceTypeOverride !== undefined) setServiceType(nextServiceType);
 
-    void runSearch({ icd10: nextIcd10, cpt: nextCpt });
+    void runSearch({ icd10: nextIcd10, cpt: nextCpt, serviceType: nextServiceType });
   }
 
   return (
