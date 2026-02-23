@@ -95,6 +95,7 @@ export default function CoverageCheck() {
   const [searched, setSearched] = useState(false);
   const [showSecondary, setShowSecondary] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [synthesize, setSynthesize] = useState(false);
   const [helpCombos, setHelpCombos] = useState<CriteriaCombo[]>([]);
   const [helpTotal, setHelpTotal] = useState(0);
   const [helpSearch, setHelpSearch] = useState('');
@@ -136,6 +137,7 @@ export default function CoverageCheck() {
         if (resolvedIcd10) params.set('icd10', resolvedIcd10.trim());
         if (resolvedCpt) params.set('cpt', resolvedCpt.trim());
         if (resolvedServiceType) params.set('serviceType', resolvedServiceType);
+        if (synthesize) params.set('synthesize', 'true');
         const resp = await fetch(`/api/criteria-tree?${params}`, { headers: { Authorization: `Bearer ${token}` } });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         setResults(await resp.json() as TreeResult[]);
@@ -176,13 +178,38 @@ export default function CoverageCheck() {
   const primary = results?.filter(r => r.isPrimary !== false && (r.relevanceScore ?? 100) >= 80) ?? [];
   const secondary = results?.filter(r => !primary.includes(r)) ?? [];
 
-  const renderResult = (result: TreeResult, i: number) => (
-    <div key={`${i}-${icd10}-${cpt}`} className="rounded-2xl border border-slate-200 bg-white shadow-sm animate-fade-up overflow-hidden">
+  const renderResult = (result: TreeResult, i: number) => {
+    const isSynthesized = result.policy.policyType === 'SYNTHESIZED';
+    const sourcePolicies = (result.policy as unknown as Record<string,unknown>).sourcePolicies as Array<{cmsId:string|null;title:string}> | undefined;
+    const sourcePolicyCount = (result.policy as unknown as Record<string,unknown>).sourcePolicyCount as number | undefined;
+    return (
+    <div key={`${i}-${icd10}-${cpt}`} className={cn(
+      "rounded-2xl border shadow-sm animate-fade-up overflow-hidden",
+      isSynthesized ? "border-violet-300 bg-white shadow-violet-100 ring-1 ring-violet-200" : "border-slate-200 bg-white"
+    )}>
+      {/* Synthesized banner */}
+      {isSynthesized && (
+        <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5">
+          <div className="flex items-center gap-2">
+            <Sparkles size={13} className="text-white/80 shrink-0" />
+            <span className="text-xs font-bold text-white">AI-Synthesized Criteria</span>
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white">
+              merged from {sourcePolicyCount ?? '?'} regional policies
+            </span>
+          </div>
+          {sourcePolicies && sourcePolicies.length > 0 && (
+            <div className="flex items-center gap-1 text-[9px] text-white/60 truncate max-w-xs">
+              Sources: {sourcePolicies.slice(0,4).map(p => p.cmsId || p.title.slice(0,15)).join(' · ')}
+              {sourcePolicies.length > 4 && ` +${sourcePolicies.length - 4} more`}
+            </div>
+          )}
+        </div>
+      )}
       {/* Card header */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm font-bold text-slate-900 truncate">{result.criteriaSet.title}</span>
-          {(result.relevanceScore ?? 100) >= 90 && (
+          {!isSynthesized && (result.relevanceScore ?? 100) >= 90 && (
             <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-700 uppercase tracking-wide">Best Match</span>
           )}
         </div>
@@ -203,7 +230,8 @@ export default function CoverageCheck() {
         />
       </div>
     </div>
-  );
+    );
+  };
 
   // ── ALWAYS: dark left panel + right panel (form or results) ──────────────────
   return (
@@ -567,6 +595,21 @@ export default function CoverageCheck() {
             >
               <RotateCcw size={11} />
               Reset
+            </button>
+            {/* Synthesize toggle */}
+            <button
+              onClick={() => { setSynthesize(s => !s); void runSearch({ icd10: icd10Ref.current, cpt: cptRef.current, serviceType: serviceTypeRef.current }); }}
+              disabled={loading}
+              title="Use AI to synthesize multiple regional policies into one authoritative criteria tree"
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all',
+                synthesize
+                  ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/30'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-600',
+              )}
+            >
+              <Sparkles size={11} />
+              {synthesize ? 'Synthesized' : 'Synthesize'}
             </button>
             {/* Result count */}
             {!loading && results !== null && (

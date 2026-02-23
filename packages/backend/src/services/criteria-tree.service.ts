@@ -55,7 +55,107 @@ export interface CriteriaTreeResult {
 export interface CriteriaTreeQuery {
   icd10?: string;           // comma-separated ICD-10 codes, e.g. "J96.00,J44.1"
   cpt?: string;             // CPT code, e.g. "94660"
+  synthesize?: boolean;     // when true, LLM synthesizes N results into 1 authoritative tree
   serviceType?: string;     // e.g. "INPATIENT", "OUTPATIENT"
+}
+
+/**
+ * Call Claude via Bedrock to synthesize multiple regional LCD variants into
+ * one authoritative criteria decision tree — the "strictest superset".
+ */
+async function synthesizeTrees(sources: CriteriaTreeResult[]): Promise<CriteriaTreeResult | null> {
+  if (sources.length === 0) return null;
+  if (sources.length === 1) return sources[0]!;   // nothing to synthesize
+
+  try {
+    const { BedrockRuntimeClient, ConverseCommand } = await import('@aws-sdk/client-bedrock-runtime');
+    const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
+
+    const sourceSummaries = sources
+      .slice(0, 8)  // cap at 8 sources to keep prompt manageable
+      .map((s, i) => {
+        const treeJson = JSON.stringify(s.tree, null, 2).slice(0, 1800);
+        return `Source ${i + 1}: ${s.policy.title} (${s.policy.cmsId ?? s.policy.policyType})\nScope: ${s.criteriaSet.scopeSetting} / ${s.criteriaSet.scopeRequestType}\nTree:\n${treeJson}`;
+      })
+      .join('\n\n---\n\n');
+
+    const sharedTitle = sources[0]!.policy.title
+      .replace(/\s*\(.*?\)\s*/g, '')  // strip parentheticals
+      .replace(/\s*-\s*(TPI|TPA|LCD.*|NCD.*)$/i, '')
+      .trim();
+
+    const prompt = `You are a clinical coverage criteria expert. The following are ${sources.length} regional Medicare LCD policies that cover the same procedure from different contractors. Synthesize them into ONE authoritative criteria decision tree.
+
+SHARED CONCEPT: "${sharedTitle}"
+SCOPE: ${sources[0]!.criteriaSet.scopeSetting} / ${sources[0]!.criteriaSet.scopeRequestType}
+
+SOURCE POLICIES:
+${sourceSummaries}
+
+INSTRUCTIONS:
+1. Create ONE unified criteria decision tree using the STRICTEST SUPERSET approach — if ANY source requires a criterion, include it
+2. Resolve conflicts by using the more specific/stringent threshold
+3. Preserve all LOINC codes, ICD-10 codes, and numeric thresholds from the sources
+4. Use proper AND/OR/LEAF node types — AND means ALL must be met, OR means ANY one suffices
+5. The root node label should be the shared concept name (not a specific LCD number)
+6. Keep the tree clinically actionable — 5–12 LEAF nodes maximum
+
+Return ONLY valid JSON matching this exact TypeScript interface (no markdown, no explanation):
+interface TreeNode {
+  id: string;
+  label: string;
+  description?: string;
+  type: "AND" | "OR" | "LEAF";
+  dataType?: "vital" | "lab" | "diagnosis" | "procedure" | "coverage" | "clinical_note";
+  threshold?: { operator: string; value?: number | string | string[]; unit?: string; loinc?: string; display?: string };
+  required: boolean;
+  clinicalNotes?: string;
+  children?: TreeNode[];
+}`;
+
+    const response = await client.send(new ConverseCommand({
+      modelId: process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-6',
+      messages: [{ role: 'user', content: [{ text: prompt }] }],
+      inferenceConfig: { maxTokens: 8000, temperature: 0.1 },
+    }));
+
+    const text = response.output?.message?.content?.[0]?.text ?? '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const synthesizedTree = JSON.parse(jsonMatch[0]) as TreeNode;
+    const sourceIds = sources.map(s => s.policy.cmsId ?? s.policy.id).filter(Boolean);
+
+    return {
+      relevanceScore: 150,   // always ranked first
+      isPrimary: true,
+      policy: {
+        id: `synthesized-${Date.now()}`,
+        title: `${sharedTitle} — Synthesized Criteria`,
+        policyType: 'SYNTHESIZED',
+        cmsId: null,
+        sourceUrl: null,
+        // @ts-expect-error — extra field for UI citation
+        sourceIds,
+        sourcePolicies: sources.slice(0, 8).map(s => ({ cmsId: s.policy.cmsId, title: s.policy.title })),
+        sourcePolicyCount: sources.length,
+      },
+      criteriaSet: {
+        id: `synthesized-cs-${Date.now()}`,
+        criteriaSetId: `SYNTHESIZED-${sharedTitle.replace(/\s+/g, '-').toUpperCase().slice(0, 30)}`,
+        title: `${sharedTitle} — Synthesized from ${sources.length} regional policies`,
+        scopeSetting: sources[0]!.criteriaSet.scopeSetting,
+        scopeRequestType: sources[0]!.criteriaSet.scopeRequestType,
+        cqlLibraryFhirId: null,
+        procedureCodes: null,
+      },
+      tree: synthesizedTree,
+      matchedOn: sources[0]!.matchedOn,
+    };
+  } catch (err) {
+    console.error('Synthesis error:', err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 /** Build a generic fallback tree when no dsl_json is stored */
@@ -266,6 +366,17 @@ export async function getCriteriaTree(
     if (!seen.has(fp)) {
       seen.set(fp, true);
       deduped.push(result);
+    }
+  }
+
+  // Optional LLM synthesis: when requested AND there are multiple primary results,
+  // call Claude to merge them into one authoritative tree and prepend it.
+  if (query.synthesize && deduped.length > 1) {
+    const primarySources = deduped.filter(r => r.isPrimary);
+    const toSynthesize = primarySources.length >= 2 ? primarySources : deduped;
+    const synthesized = await synthesizeTrees(toSynthesize.slice(0, 8));
+    if (synthesized) {
+      return [synthesized, ...deduped];
     }
   }
 

@@ -4,7 +4,7 @@ import { db } from '../db/connection.js';
 
 export default async function criteriaTreeRoutes(app: FastifyInstance) {
   app.get<{
-    Querystring: { icd10?: string; cpt?: string; serviceType?: string };
+    Querystring: { icd10?: string; cpt?: string; serviceType?: string; synthesize?: string };
   }>(
     '/api/criteria-tree',
     {
@@ -56,7 +56,7 @@ export default async function criteriaTreeRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { icd10, cpt, serviceType } = request.query;
+      const { icd10, cpt, serviceType, synthesize } = request.query;
 
       if (!icd10 && !cpt) {
         return reply
@@ -64,7 +64,7 @@ export default async function criteriaTreeRoutes(app: FastifyInstance) {
           .send({ error: 'Provide at least one of: icd10, cpt' });
       }
 
-      const results = await getCriteriaTree({ icd10, cpt, serviceType });
+      const results = await getCriteriaTree({ icd10, cpt, serviceType, synthesize: synthesize === 'true' });
       return reply.send(results);
     },
   );
