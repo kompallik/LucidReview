@@ -35,6 +35,7 @@ export default function CoverageCheck() {
   const [results, setResults] = useState<TreeResult[] | null>(null);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
+  const [showSecondary, setShowSecondary] = useState(false);
 
   const token = localStorage.getItem('lucidreview_token');
 
@@ -64,6 +65,7 @@ export default function CoverageCheck() {
       setError('');
       setLoading(true);
       setSearched(true);
+      setShowSecondary(false);
       try {
         const params = new URLSearchParams();
         if (resolvedIcd10) params.set('icd10', resolvedIcd10.trim());
@@ -224,7 +226,6 @@ export default function CoverageCheck() {
           {!loading && results && results.length > 0 && (() => {
             const primary = results.filter(r => r.isPrimary !== false && (r.relevanceScore ?? 100) >= 80);
             const secondary = results.filter(r => !primary.includes(r));
-            const [showSecondary, setShowSecondary] = useState(false);
 
             const renderResult = (result: TreeResult, i: number) => (
               <div key={`${i}-${icd10}-${cpt}`} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
