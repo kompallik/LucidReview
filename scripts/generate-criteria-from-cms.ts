@@ -914,6 +914,9 @@ async function main(): Promise<void> {
     let lcds = filterActiveLcds(allLcds);
     console.log(`  Active LCDs        : ${lcds.length}`);
     if (targetLcdId) { lcds = lcds.filter(r => r.lcd_id === targetLcdId); console.log(`  After --lcd-id     : ${lcds.length}`); }
+    const lcdOffsetIdx = args.indexOf('--lcd-offset');
+    const lcdOffset = lcdOffsetIdx !== -1 ? parseInt(args[lcdOffsetIdx + 1] ?? '0', 10) : 0;
+    if (lcdOffset > 0) { lcds = lcds.slice(lcdOffset); console.log(`  After --lcd-offset : ${lcds.length}`); }
     if (limit !== Infinity) { lcds = lcds.slice(0, limit); console.log(`  After --limit      : ${lcds.length}`); }
 
     if (lcds.length > 0) {
