@@ -12,7 +12,8 @@
     "migrate": "knex --knexfile src/db/knexfile.ts migrate:latest",
     "migrate:make": "knex --knexfile src/db/knexfile.ts migrate:make",
     "ingest:cms": "tsx ../../scripts/ingest-cms-policies.ts",
-    "generate:criteria": "tsx ../../scripts/generate-criteria-from-cms.ts"
+    "generate:criteria": "tsx ../../scripts/generate-criteria-from-cms.ts",
+    "init:hapi-fhir": "tsx ../../scripts/init-hapi-fhir.ts"
   },
   "dependencies": {
     "@lucidreview/shared": "workspace:*",

@@ -422,6 +422,7 @@ export default function CaseReview() {
 
   const logRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const treeRef = useRef<TreeResult | null>(null);
 
   useEffect(() => {
     if (logRef.current && !logCollapsed) logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -523,34 +524,106 @@ export default function CaseReview() {
       }
       if (toolName === 'um_get_member_coverage') {
         // Flash coverage node active, then mark it met
-        if (treeLeafIds.includes('coverage')) {
-          setActiveLeafIds(new Set(['coverage']));
-          setTimeout(() => {
-            setCriteriaStates(prev => { const n = new Map(prev); n.set('coverage', 'met'); return n; });
-            setActiveLeafIds(new Set());
-          }, 1200);
-        }
+        setCriteriaStates(prev => {
+          const next = new Map(prev);
+          if (treeLeafIds.includes('coverage')) next.set('coverage', 'met');
+          return next;
+        });
+        setActiveLeafIds(new Set(treeLeafIds.filter(id => id.includes('coverage'))));
+        setTimeout(() => setActiveLeafIds(new Set()), 1500);
       }
       if (toolName === 'um_get_clinical_info') {
         try {
-          const rawClinical = Array.isArray(output) ? (output[0] as { text?: string } | undefined)?.text : String(output);
-          const clinicalData = JSON.parse(rawClinical ?? '{}') as { diagnoses?: Array<{ code?: string }> };
-          const diagCodes = (clinicalData.diagnoses ?? []).map((d) => d.code ?? '');
+          const raw = Array.isArray(output) ? (output as Array<{text?: string}>)[0]?.text : String(output);
+          const data = JSON.parse(raw as string) as {
+            diagnoses?: Array<{code?: string; display?: string}>;
+            vitals?: Array<{code?: string; loinc?: string; value?: number; unit?: string; name?: string}>;
+            labs?: Array<{code?: string; loinc?: string; value?: number; unit?: string; name?: string}>;
+          };
+
+          const updates = new Map<string, 'met' | 'not_met'>();
+          const tree = treeRef.current?.tree ?? null;
+
+          // ── Helper: evaluate a threshold against a numeric value ──
+          const evalThreshold = (val: number, op: string, threshold: number): boolean => {
+            if (op === '<')  return val < threshold;
+            if (op === '<=') return val <= threshold;
+            if (op === '>')  return val > threshold;
+            if (op === '>=') return val >= threshold;
+            if (op === '==') return val === threshold;
+            return false;
+          };
+
+          // ── Helper: find a leaf node in the tree by id ──
+          const findLeaf = (node: unknown, id: string): Record<string, unknown> | null => {
+            if (!node || typeof node !== 'object') return null;
+            const n = node as Record<string, unknown>;
+            if (n['id'] === id) return n;
+            for (const child of (n['children'] as unknown[] ?? [])) {
+              const found = findLeaf(child, id);
+              if (found) return found;
+            }
+            return null;
+          };
+
+          // ── Match vitals and labs to leaf nodes via LOINC or name ──
+          const allMeasurements = [...(data.vitals ?? []), ...(data.labs ?? [])];
+          for (const m of allMeasurements) {
+            if (m.value === undefined || m.value === null) continue;
+            const loinc = m.loinc ?? '';
+            const nameLower = (m.code ?? m.name ?? '').toLowerCase();
+
+            // Map to leaf node IDs
+            const candidateLeafIds: string[] = [];
+            if (loinc === '2708-6' || nameLower.includes('spo2') || nameLower.includes('oxygen sat'))  candidateLeafIds.push('spo2');
+            if (loinc === '9279-1' || nameLower.includes('respiratory rate') || nameLower.includes('resp_rate')) candidateLeafIds.push('resp_rate');
+            if (loinc === '2703-7' || nameLower.includes('po2') || nameLower.includes('pao2'))         candidateLeafIds.push('po2');
+            if (loinc === '2019-8' || nameLower.includes('pco2') || nameLower.includes('paco2'))       candidateLeafIds.push('hypercapnia');
+            if (loinc === '2744-1' || nameLower === 'ph' || nameLower.includes('acidosis'))             candidateLeafIds.push('acidosis');
+
+            for (const leafId of candidateLeafIds) {
+              if (!treeLeafIds.includes(leafId)) continue;
+              // Get threshold from tree if available
+              const leafNode = tree ? findLeaf(tree, leafId) : null;
+              const thresh = leafNode?.['threshold'] as {operator?: string; value?: number} | undefined;
+              if (thresh?.operator && thresh.value !== undefined) {
+                const met = evalThreshold(m.value as number, thresh.operator, thresh.value as number);
+                updates.set(leafId, met ? 'met' : 'not_met');
+              } else {
+                // No threshold → just mark present = met
+                updates.set(leafId, 'met');
+              }
+            }
+          }
+
+          // ── Match diagnoses to the diagnosis leaf ──
+          const diagCodes = (data.diagnoses ?? []).map(d => d.code ?? '');
           if (diagCodes.length > 0 && treeLeafIds.includes('diagnosis')) {
+            updates.set('diagnosis', 'met');
+          }
+
+          // ── Animate updates with stagger ──
+          if (updates.size > 0) {
+            let delay = 400;
+            for (const [nodeId, state] of updates) {
+              setTimeout(() => {
+                setActiveLeafIds(new Set([nodeId]));
+                setTimeout(() => {
+                  setCriteriaStates(prev => { const n = new Map(prev); n.set(nodeId, state); return n; });
+                  setActiveLeafIds(prev => { const n = new Set(prev); n.delete(nodeId); return n; });
+                }, 900);
+              }, delay);
+              delay += 500;
+            }
+          } else if (diagCodes.length > 0 && treeLeafIds.includes('diagnosis')) {
+            // Fallback: just animate diagnosis
             setActiveLeafIds(new Set(['diagnosis']));
             setTimeout(() => {
               setCriteriaStates(prev => { const n = new Map(prev); n.set('diagnosis', 'met'); return n; });
               setActiveLeafIds(new Set());
-            }, 1200);
+            }, 1000);
           }
-        } catch {
-          // Fallback: still flash the diagnosis node
-          setActiveLeafIds(new Set(['diagnosis']));
-          setTimeout(() => {
-            setActiveLeafIds(new Set());
-            setCriteriaStates(prev => { const n = new Map(prev); if (treeLeafIds.includes('diagnosis')) n.set('diagnosis', 'met'); return n; });
-          }, 1500);
-        }
+        } catch { /* ignore */ }
       }
       if (toolName === 'nlp_extract_clinical_entities') {
         try {
@@ -657,6 +730,7 @@ export default function CaseReview() {
         trees = r.ok ? (await r.json() as TreeResult[]) : [];
       }
       setTreeResults(trees);
+      if (trees.length > 0) treeRef.current = trees[0];
       if (!trees.length) appendLog({ ts: nowTs(), tool: 'No matching criteria tree — using agent evaluation', status: 'done', type: 'system' });
       else appendLog({ ts: nowTs(), tool: 'criteria_tree', status: 'done', preview: `${trees.length} criteria set(s) loaded`, type: 'system' });
       setPhase('running');
