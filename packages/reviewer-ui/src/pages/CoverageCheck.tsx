@@ -12,6 +12,8 @@ const QUICK_CODES = [
 ];
 
 interface TreeResult {
+  relevanceScore?: number;
+  isPrimary?: boolean;
   policy: { id: string; title: string; policyType: string; cmsId: string | null; sourceUrl: string | null };
   criteriaSet: {
     id: string;
@@ -219,33 +221,62 @@ export default function CoverageCheck() {
             </div>
           )}
 
-          {!loading && results && results.length > 0 && (
-            <div className="space-y-6">
-              <p className="text-xs text-slate-500">
-                {results.length} criteria set{results.length !== 1 ? 's' : ''} found
-              </p>
-              {results.map((result, i) => (
-                <div
-                  key={`${i}-${icd10}-${cpt}`}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-5"
-                >
-                  <div className="mb-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                      {result.criteriaSet.title}
-                    </span>
-                  </div>
-                  <CriteriaTreeView
-                    tree={result.tree}
-                    policyTitle={result.policy.title}
-                    cmsId={result.policy.cmsId}
-                    scopeSetting={result.criteriaSet.scopeSetting}
-                    scopeRequestType={result.criteriaSet.scopeRequestType}
-                    cqlLibraryFhirId={result.criteriaSet.cqlLibraryFhirId}
-                  />
+          {!loading && results && results.length > 0 && (() => {
+            const primary = results.filter(r => r.isPrimary !== false && (r.relevanceScore ?? 100) >= 80);
+            const secondary = results.filter(r => !primary.includes(r));
+            const [showSecondary, setShowSecondary] = useState(false);
+
+            const renderResult = (result: TreeResult, i: number) => (
+              <div key={`${i}-${icd10}-${cpt}`} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    {result.criteriaSet.title}
+                  </span>
+                  {(result.relevanceScore ?? 100) >= 90 && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Best Match</span>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+                <CriteriaTreeView
+                  tree={result.tree}
+                  policyTitle={result.policy.title}
+                  cmsId={result.policy.cmsId}
+                  scopeSetting={result.criteriaSet.scopeSetting}
+                  scopeRequestType={result.criteriaSet.scopeRequestType}
+                  cqlLibraryFhirId={result.criteriaSet.cqlLibraryFhirId}
+                />
+              </div>
+            );
+
+            return (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-500">
+                  {primary.length} primary {primary.length === 1 ? 'match' : 'matches'}
+                  {secondary.length > 0 && ` · ${secondary.length} related`}
+                </p>
+
+                {/* Primary results */}
+                <div className="space-y-6">{primary.map((r, i) => renderResult(r, i))}</div>
+
+                {/* Secondary / comorbidity results — collapsed by default */}
+                {secondary.length > 0 && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setShowSecondary(s => !s)}
+                      className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+                    >
+                      <ChevronDown size={14} className={`transition-transform ${showSecondary ? 'rotate-180' : ''}`} />
+                      {showSecondary ? 'Hide' : 'Show'} {secondary.length} additional polic{secondary.length === 1 ? 'y' : 'ies'} where this code appears as a comorbidity
+                    </button>
+                    {showSecondary && (
+                      <div className="mt-4 space-y-6 opacity-80">
+                        {secondary.map((r, i) => renderResult(r, primary.length + i))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Empty state before first search */}
           {!loading && !searched && (

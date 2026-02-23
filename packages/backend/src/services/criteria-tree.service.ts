@@ -45,6 +45,10 @@ export interface CriteriaTreeResult {
   };
   tree: TreeNode;
   matchedOn: { diagnosisCodes: string[]; serviceType?: string };
+  /** 0–100: how specifically this policy targets the input codes (vs just listing them as comorbidities) */
+  relevanceScore: number;
+  /** true when the input code appears in the first 3 positions of the policy's diagnosisCodes list */
+  isPrimary: boolean;
 }
 
 export interface CriteriaTreeQuery {
@@ -110,6 +114,9 @@ export async function getCriteriaTree(
   for (const policy of policies) {
     // Check if policy covers any of the input diagnosis codes
     let matches = false;
+    let relevanceScore = 0;
+    let isPrimary = false;
+
     if (inputCodes.length > 0) {
       const sections =
         typeof policy.sections_json === 'string'
@@ -118,9 +125,22 @@ export async function getCriteriaTree(
       const policyCodes: string[] = (sections.diagnosisCodes ?? []).map((c: string) =>
         c.toUpperCase(),
       );
-      matches = inputCodes.some((code) =>
-        policyCodes.some((pc) => pc === code || code.startsWith(pc) || pc.startsWith(code)),
-      );
+
+      for (const inputCode of inputCodes) {
+        const idx = policyCodes.findIndex(
+          (pc) => pc === inputCode || inputCode.startsWith(pc) || pc.startsWith(inputCode),
+        );
+        if (idx !== -1) {
+          matches = true;
+          // Position-based relevance: codes listed first are primary diagnoses
+          // idx 0 = 100 pts, idx 1 = 90, idx 2 = 80, idx 3-5 = 50, idx 6+ = 20
+          const posScore = idx === 0 ? 100 : idx === 1 ? 90 : idx === 2 ? 80 : idx <= 5 ? 50 : 20;
+          // Exact match scores higher than prefix match
+          const exactBonus = policyCodes[idx] === inputCode ? 10 : 0;
+          relevanceScore = Math.max(relevanceScore, posScore + exactBonus);
+          if (idx <= 2) isPrimary = true;
+        }
+      }
     }
 
     if (!matches && !query.cpt) continue;
@@ -170,6 +190,8 @@ export async function getCriteriaTree(
       }
 
       results.push({
+        relevanceScore,
+        isPrimary,
         policy: {
           id: policy.id,
           title: policy.title,
@@ -191,5 +213,6 @@ export async function getCriteriaTree(
     }
   }
 
-  return results;
+  // Sort: primary matches first (by relevance score desc), then secondary
+  return results.sort((a, b) => b.relevanceScore - a.relevanceScore);
 }
