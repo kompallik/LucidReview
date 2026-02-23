@@ -612,11 +612,50 @@ export default function CaseReview() {
       appendLog({ ts: nowTs(), tool: 'Loading case information…', status: 'running', type: 'system' });
       const caseInfo = await api.reviews.get(caseNumber).catch(() => null);
       appendLog({ ts: nowTs(), tool: 'Building criteria decision tree…', status: 'running', type: 'system' });
-      const params = new URLSearchParams({ serviceType: 'INPATIENT' });
-      if (caseInfo?.primaryDiagnosisCode) params.set('icd10', caseInfo.primaryDiagnosisCode);
+
+      // Map case service_type to scope setting
+      const SERVICE_TYPE_MAP: Record<string, string> = {
+        'Inpatient Level of Care': 'INPATIENT',
+        'Inpatient Admission':     'INPATIENT',
+        'INPATIENT':               'INPATIENT',
+        'Preservice Outpatient':   'OUTPATIENT',
+        'OUTPATIENT':              'OUTPATIENT',
+        'Outpatient Surgery':      'OUTPATIENT',
+        'Outpatient Service':      'OUTPATIENT',
+        'DME':                     'DME',
+        'Durable Medical Equipment': 'DME',
+        'Home Health':             'HOME_HEALTH',
+        'HOME_HEALTH':             'HOME_HEALTH',
+        'SNF':                     'INPATIENT',
+        'Transplant':              'INPATIENT',
+        // OOA has no single setting — omit for broadest match
+      };
+      const caseScope = caseInfo?.serviceType ? (SERVICE_TYPE_MAP[caseInfo.serviceType] ?? '') : '';
+
       const token = localStorage.getItem('lucidreview_token') ?? '';
-      const treesResp = await fetch(`/api/criteria-tree?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
-      const trees: TreeResult[] = treesResp.ok ? await treesResp.json() as TreeResult[] : [];
+
+      // Helper: fetch criteria tree with given params
+      const fetchTree = async (scopeSetting: string): Promise<TreeResult[]> => {
+        const p = new URLSearchParams();
+        if (caseInfo?.primaryDiagnosisCode) p.set('icd10', caseInfo.primaryDiagnosisCode);
+        if (scopeSetting) p.set('serviceType', scopeSetting);
+        const r = await fetch(`/api/criteria-tree?${p.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+        return r.ok ? (await r.json() as TreeResult[]) : [];
+      };
+
+      // Try with scope first, fall back to no-scope if 0 results
+      let trees = await fetchTree(caseScope);
+      if (!trees.length && caseScope) {
+        appendLog({ ts: nowTs(), tool: 'Broadening criteria search…', status: 'running', type: 'system' });
+        trees = await fetchTree('');
+      }
+      // Final fallback: search by diagnosis without scope to get at least something
+      if (!trees.length && caseInfo?.primaryDiagnosisCode) {
+        const fallbackCodes = caseInfo.primaryDiagnosisCode.split('.')[0]; // e.g. J96 from J96.00
+        const p = new URLSearchParams({ icd10: fallbackCodes });
+        const r = await fetch(`/api/criteria-tree?${p.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+        trees = r.ok ? (await r.json() as TreeResult[]) : [];
+      }
       setTreeResults(trees);
       if (!trees.length) appendLog({ ts: nowTs(), tool: 'No matching criteria tree — using agent evaluation', status: 'done', type: 'system' });
       else appendLog({ ts: nowTs(), tool: 'criteria_tree', status: 'done', preview: `${trees.length} criteria set(s) loaded`, type: 'system' });
