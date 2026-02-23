@@ -236,6 +236,38 @@ export async function getCriteriaTree(
     });
   }
 
-  // Sort: primary matches first (by relevance score desc), then secondary
-  return results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  // Sort by relevance score first
+  results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+  // Deduplicate regional MAC variants: multiple LCDs often represent the same
+  // clinical policy published by different Medicare contractors.
+  // Strategy: build a 3-word title fingerprint (lowercase, no stop-words,
+  // no parentheticals) — if two results share the same fingerprint, keep only
+  // the highest-scoring one (already first after sort above).
+  const STOP_WORDS = new Set(['of','the','and','for','in','to','a','an','with','or','on','at','by','is','are','not','from','into','as','that','this','its','it']);
+
+  function titleFingerprint(title: string): string {
+    const cleaned = title
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, '')   // strip parentheticals like (TPI), (LCD L35010)
+      .replace(/[^a-z\s]/g, ' ')   // keep only letters and spaces
+      .trim();
+    const words = cleaned.split(/\s+/)
+      .filter(w => w.length > 2 && !STOP_WORDS.has(w))
+      // Basic stemming: strip trailing 's' so injection/injections, point/points collapse
+      .map(w => (w.endsWith('s') && w.length > 4) ? w.slice(0, -1) : w);
+    return words.slice(0, 4).sort().join('|');
+  }
+
+  const seen = new Map<string, true>();
+  const deduped: CriteriaTreeResult[] = [];
+  for (const result of results) {
+    const fp = titleFingerprint(result.policy.title);
+    if (!seen.has(fp)) {
+      seen.set(fp, true);
+      deduped.push(result);
+    }
+  }
+
+  return deduped;
 }
