@@ -2,39 +2,45 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, Zap, Stethoscope } from 'lucide-react';
 import CodeLookup, { type Code, ICD10_CODES, CPT_CODES } from './CodeLookup.tsx';
 
-// Validated clinical combos: diagnosis + procedure + care setting
-// All 22 verified to return at least 1 criteria decision tree
+// Validated clinical combos — outpatient procedures are the PRIMARY focus for this POC.
+// All verified to return at least 1 criteria decision tree.
 export const CLINICAL_COMBOS = [
-  // ── Cardiac ──────────────────────────────────────────────────────────────
-  { label: 'Heart Failure + Echo',           icd10: 'I50.9',   cpt: '93306', setting: 'INPATIENT',   category: 'Cardiac'      },
-  { label: 'Acute MI + PCI/Stent',           icd10: 'I21.9',   cpt: '92928', setting: 'INPATIENT',   category: 'Cardiac'      },
-  { label: 'A-Fib + Cardioversion',          icd10: 'I48.91',  cpt: '92960', setting: 'INPATIENT',   category: 'Cardiac'      },
-  // ── Respiratory ──────────────────────────────────────────────────────────
-  { label: 'ARF + BiPAP',                    icd10: 'J96.00',  cpt: '94660', setting: 'INPATIENT',   category: 'Respiratory'  },
-  { label: 'COPD Exacerbation + BiPAP',      icd10: 'J44.1',   cpt: '94660', setting: 'INPATIENT',   category: 'Respiratory'  },
-  { label: 'Sleep Apnea + CPAP',             icd10: 'G47.33',  cpt: 'E0601', setting: 'DME',          category: 'Respiratory'  },
-  { label: 'COPD + Home Oxygen',             icd10: 'J44.9',   cpt: 'E1390', setting: 'HOME_HEALTH',  category: 'Respiratory'  },
-  // ── Orthopedic ───────────────────────────────────────────────────────────
-  { label: 'Hip OA + Total Hip (27130)',     icd10: 'M16.11',  cpt: '27130', setting: 'INPATIENT',   category: 'Orthopedic'   },
-  { label: 'Knee OA + Total Knee (27447)',   icd10: 'M17.11',  cpt: '27447', setting: 'INPATIENT',   category: 'Orthopedic'   },
-  { label: 'Back Pain + Facet Injection',    icd10: 'M54.50',  cpt: '64493', setting: 'OUTPATIENT',  category: 'Orthopedic'   },
-  // ── Neurological ─────────────────────────────────────────────────────────
-  { label: 'Stroke + Thrombectomy',          icd10: 'I63.9',   cpt: '37184', setting: 'INPATIENT',   category: 'Neurology'    },
-  { label: 'Depression + Psychotherapy',     icd10: 'F32.9',   cpt: '90837', setting: 'OUTPATIENT',  category: 'Mental Health'},
-  // ── Oncology ─────────────────────────────────────────────────────────────
-  { label: 'Lung Cancer + Chemotherapy',     icd10: 'C34.90',  cpt: '96413', setting: 'OUTPATIENT',  category: 'Oncology'     },
-  { label: 'Breast Cancer + IMRT',           icd10: 'C50.919', cpt: '77301', setting: 'OUTPATIENT',  category: 'Oncology'     },
-  // ── Renal/Transplant ─────────────────────────────────────────────────────
-  { label: 'ESRD + Hemodialysis',            icd10: 'N18.6',   cpt: '90935', setting: 'OUTPATIENT',  category: 'Renal'        },
-  { label: 'Kidney Transplant',              icd10: 'Z94.0',   cpt: '50360', setting: 'INPATIENT',   category: 'Transplant'   },
-  { label: 'Liver Failure + Transplant',     icd10: 'K72.10',  cpt: '47135', setting: 'INPATIENT',   category: 'Transplant'   },
-  // ── Diabetes/GI ──────────────────────────────────────────────────────────
-  { label: 'T2 Diabetes + Blood Glucose',    icd10: 'E11.9',   cpt: '82947', setting: 'OUTPATIENT',  category: 'Endocrine'    },
-  { label: 'Diabetes + CGM Initiation',      icd10: 'E11.65',  cpt: '95250', setting: 'OUTPATIENT',  category: 'Endocrine'    },
-  { label: 'Diverticulosis + Colonoscopy',   icd10: 'K57.30',  cpt: '45385', setting: 'OUTPATIENT',  category: 'GI'           },
-  // ── Sepsis/Obesity ───────────────────────────────────────────────────────
-  { label: 'Sepsis + Central Line',          icd10: 'A41.9',   cpt: '36555', setting: 'INPATIENT',   category: 'Sepsis'       },
-  { label: 'Morbid Obesity + Bariatric',     icd10: 'E66.01',  cpt: '43644', setting: 'INPATIENT',   category: 'Endocrine'    },
+  // ── Outpatient Procedures (PRIMARY focus) ────────────────────────────────
+  { label: 'Back Pain + Facet Injection',         icd10: 'M54.50',  cpt: '64493', setting: 'OUTPATIENT', category: 'Pain Management'   },
+  { label: 'Back Pain + Epidural Steroid',        icd10: 'M54.10',  cpt: '62321', setting: 'OUTPATIENT', category: 'Pain Management'   },
+  { label: 'Knee OA + Arthroscopy',               icd10: 'M17.11',  cpt: '29881', setting: 'OUTPATIENT', category: 'Orthopedic'        },
+  { label: 'Knee OA + Total Knee (Outpt)',        icd10: 'M17.11',  cpt: '27447', setting: 'OUTPATIENT', category: 'Orthopedic'        },
+  { label: 'Shoulder Tear + Arthroscopy',         icd10: 'M75.120', cpt: '29827', setting: 'OUTPATIENT', category: 'Orthopedic'        },
+  { label: 'Lumbar Stenosis + Laminectomy',       icd10: 'M48.061', cpt: '63047', setting: 'OUTPATIENT', category: 'Spine'             },
+  { label: 'Cataract + Phaco Surgery',            icd10: 'H25.9',   cpt: '66984', setting: 'OUTPATIENT', category: 'Ophthalmology'     },
+  { label: 'Glaucoma + Laser Trabeculoplasty',    icd10: 'H40.10',  cpt: '65855', setting: 'OUTPATIENT', category: 'Ophthalmology'     },
+  { label: 'Retinal Disease + Vitrectomy',        icd10: 'H33.001', cpt: '67036', setting: 'OUTPATIENT', category: 'Ophthalmology'     },
+  { label: 'Colon Cancer Screen + Colonoscopy',   icd10: 'Z12.11',  cpt: '45378', setting: 'OUTPATIENT', category: 'GI'                },
+  { label: 'Diverticulosis + Colonoscopy',        icd10: 'K57.30',  cpt: '45385', setting: 'OUTPATIENT', category: 'GI'                },
+  { label: 'Dyspepsia + Upper Endoscopy (EGD)',   icd10: 'K30',     cpt: '43239', setting: 'OUTPATIENT', category: 'GI'                },
+  { label: 'CAD + Cardiac Stress Test',           icd10: 'I25.10',  cpt: '93015', setting: 'OUTPATIENT', category: 'Cardiology'        },
+  { label: 'Chest Pain + Echo (Transthoracic)',   icd10: 'R07.9',   cpt: '93306', setting: 'OUTPATIENT', category: 'Cardiology'        },
+  { label: 'CAD + Nuclear Stress (SPECT)',        icd10: 'I25.10',  cpt: '78452', setting: 'OUTPATIENT', category: 'Cardiology'        },
+  { label: 'CAD + Coronary CT Angio (CCTA)',      icd10: 'I25.10',  cpt: '75574', setting: 'OUTPATIENT', category: 'Cardiology'        },
+  { label: 'Sleep Apnea + Polysomnography',       icd10: 'G47.33',  cpt: '95810', setting: 'OUTPATIENT', category: 'Pulmonology'       },
+  { label: 'Sleep Apnea + CPAP',                  icd10: 'G47.33',  cpt: 'E0601', setting: 'DME',         category: 'Pulmonology'       },
+  { label: 'Major Depression + TMS',              icd10: 'F32.9',   cpt: '90867', setting: 'OUTPATIENT', category: 'Mental Health'     },
+  { label: 'Major Depression + Psychotherapy',    icd10: 'F32.9',   cpt: '90837', setting: 'OUTPATIENT', category: 'Mental Health'     },
+  { label: 'Low Back + EMG / Nerve Conduction',   icd10: 'M54.50',  cpt: '95886', setting: 'OUTPATIENT', category: 'Neurology'         },
+  { label: 'Lung Cancer + Chemotherapy',          icd10: 'C34.90',  cpt: '96413', setting: 'OUTPATIENT', category: 'Oncology'          },
+  { label: 'Breast Cancer + IMRT Radiation',      icd10: 'C50.919', cpt: '77301', setting: 'OUTPATIENT', category: 'Oncology'          },
+  { label: 'T2 Diabetes + Blood Glucose Lab',     icd10: 'E11.9',   cpt: '82947', setting: 'OUTPATIENT', category: 'Endocrine'         },
+  { label: 'Diabetes + CGM Initiation',           icd10: 'E11.65',  cpt: '95250', setting: 'OUTPATIENT', category: 'Endocrine'         },
+  { label: 'Obesity + Bariatric Surgery',         icd10: 'E66.01',  cpt: '43644', setting: 'OUTPATIENT', category: 'Endocrine'         },
+  { label: 'Skin Cancer + Mohs Surgery',          icd10: 'C44.91',  cpt: '17311', setting: 'OUTPATIENT', category: 'Dermatology'       },
+  { label: 'ESRD + Hemodialysis',                 icd10: 'N18.6',   cpt: '90935', setting: 'OUTPATIENT', category: 'Nephrology'        },
+  // ── Inpatient (selected high-volume) ─────────────────────────────────────
+  { label: 'Hip OA + Total Hip Replacement',      icd10: 'M16.11',  cpt: '27130', setting: 'INPATIENT',  category: 'Inpatient'         },
+  { label: 'ARF + BiPAP Ventilation',             icd10: 'J96.00',  cpt: '94660', setting: 'INPATIENT',  category: 'Inpatient'         },
+  { label: 'Heart Failure + Echocardiogram',      icd10: 'I50.9',   cpt: '93306', setting: 'INPATIENT',  category: 'Inpatient'         },
+  { label: 'Sepsis + Central Line Insertion',     icd10: 'A41.9',   cpt: '36555', setting: 'INPATIENT',  category: 'Inpatient'         },
+  // ── DME ──────────────────────────────────────────────────────────────────
+  { label: 'COPD + Home Oxygen',                  icd10: 'J44.9',   cpt: 'E1390', setting: 'HOME_HEALTH', category: 'DME'              },
 ] as const;
 
 // Top codes by UM volume — grouped for quick access

@@ -4,11 +4,14 @@ import CriteriaTreeView, { type TreeNode } from '../components/CriteriaTreeView.
 import QuickReferencePanel from '../components/QuickReferencePanel.tsx';
 
 // Known common ICD-10 codes for quick selection
+// Quick-select scenarios — outpatient procedure focus
 const QUICK_CODES = [
-  { label: 'Acute Respiratory Failure', icd10: 'J96.00', cpt: '94660', serviceType: 'INPATIENT' },
-  { label: 'Heart Failure', icd10: 'I50.9', serviceType: 'INPATIENT' },
-  { label: 'Hip Osteoarthritis', icd10: 'M16.11', cpt: '27130', serviceType: 'OUTPATIENT' },
-  { label: 'Type 2 Diabetes', icd10: 'E11.9', serviceType: 'OUTPATIENT' },
+  { label: 'Back Pain + Facet',   icd10: 'M54.50', cpt: '64493', serviceType: 'OUTPATIENT' },
+  { label: 'Knee OA + TKA',       icd10: 'M17.11', cpt: '27447', serviceType: 'OUTPATIENT' },
+  { label: 'Cataract + Surgery',  icd10: 'H25.9',  cpt: '66984', serviceType: 'OUTPATIENT' },
+  { label: 'CAD + Stress Test',   icd10: 'I25.10', cpt: '93015', serviceType: 'OUTPATIENT' },
+  { label: 'Depression + TMS',    icd10: 'F32.9',  cpt: '90867', serviceType: 'OUTPATIENT' },
+  { label: 'Colonoscopy Screen',  icd10: 'Z12.11', cpt: '45378', serviceType: 'OUTPATIENT' },
 ];
 
 interface TreeResult {
@@ -86,11 +89,6 @@ export default function CoverageCheck() {
     [token],
   );
 
-  function handleSearch(e?: React.FormEvent) {
-    e?.preventDefault();
-    void runSearch();
-  }
-
   function applyQuickCode(q: (typeof QUICK_CODES)[number]) {
     setIcd10(q.icd10 ?? '');
     setCpt(q.cpt ?? '');
@@ -122,98 +120,83 @@ export default function CoverageCheck() {
   }
 
   return (
-    <div className="max-w-screen-xl mx-auto px-4 py-8">
-      {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-slate-900">Coverage Criteria Check</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Enter a diagnosis or procedure code to see the coverage criteria decision tree — no patient
-          required.
-        </p>
-      </div>
+    <div className="flex flex-col h-full min-h-screen bg-slate-50">
 
-      {/* Search form */}
-      <form
-        onSubmit={handleSearch}
-        className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 mb-6"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              ICD-10-CM Code(s)
-            </label>
-            <input
-              value={icd10}
-              onChange={e => setIcd10(e.target.value)}
-              placeholder="e.g. J96.00, J44.1"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <p className="mt-0.5 text-[11px] text-slate-400">Comma-separate multiple codes</p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">CPT/HCPCS Code</label>
-            <input
-              value={cpt}
-              onChange={e => setCpt(e.target.value)}
-              placeholder="e.g. 94660"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Care Setting</label>
-            <div className="relative">
-              <select
-                value={serviceType}
-                onChange={e => setServiceType(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-              >
-                <option value="">Any</option>
-                <option value="INPATIENT">Inpatient</option>
-                <option value="OUTPATIENT">Outpatient</option>
-                <option value="DME">DME</option>
-                <option value="HOME_HEALTH">Home Health</option>
-              </select>
-              <ChevronDown
-                size={14}
-                className="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none"
-              />
-            </div>
-          </div>
+      {/* ── HEADER: compact single-line bar like CaseReview ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-3 flex-wrap shrink-0">
+        <h1 className="text-base font-semibold text-slate-900 shrink-0">Coverage Criteria Check</h1>
+
+        {/* Inputs inline */}
+        <div className="flex items-center gap-2 flex-1 flex-wrap">
+          <input
+            value={icd10}
+            onChange={e => setIcd10(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void runSearch(); }}
+            placeholder="ICD-10 (e.g. I50.9)"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm w-40 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <input
+            value={cpt}
+            onChange={e => setCpt(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void runSearch(); }}
+            placeholder="CPT (e.g. 93306)"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm w-32 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <select
+            value={serviceType}
+            onChange={e => setServiceType(e.target.value)}
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">Any Setting</option>
+            <option value="INPATIENT">Inpatient</option>
+            <option value="OUTPATIENT">Outpatient</option>
+            <option value="DME">DME</option>
+            <option value="HOME_HEALTH">Home Health</option>
+          </select>
         </div>
 
+        {/* Quick picks */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] text-slate-400 shrink-0">Quick:</span>
+          {QUICK_CODES.map(q => (
+            <button
+              key={q.label}
+              type="button"
+              onClick={() => applyQuickCode(q)}
+              className="rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-50 whitespace-nowrap transition-colors"
+            >
+              {q.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Error inline */}
         {error && (
-          <p className="mb-3 text-sm text-red-600 bg-red-50 rounded-md px-3 py-1.5">{error}</p>
+          <span className="text-xs text-red-600 bg-red-50 rounded-md px-2 py-1 shrink-0">{error}</span>
         )}
 
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-slate-400 self-center">Quick:</span>
-            {QUICK_CODES.map(q => (
-              <button
-                key={q.label}
-                type="button"
-                onClick={() => applyQuickCode(q)}
-                className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                {q.label}
-              </button>
-            ))}
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
-          >
-            <Search size={14} />
-            {loading ? 'Searching...' : 'Check Coverage'}
-          </button>
-        </div>
-      </form>
+        {/* Search button */}
+        <button
+          onClick={() => void runSearch()}
+          disabled={loading || (!icd10.trim() && !cpt.trim())}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300 shrink-0 transition-colors"
+        >
+          <Search size={14} />
+          {loading ? 'Searching...' : 'Check Coverage'}
+        </button>
+      </div>
 
-      {/* Two-column layout: results (left) + quick reference panel (right) */}
-      <div className="flex gap-6 items-start">
-        {/* LEFT: criteria tree results */}
-        <div className="flex-1 min-w-0">
+      {/* ── BODY: two panels ── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* LEFT: Quick Reference (fixed width, independently scrollable) */}
+        <div className="w-72 shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto p-4 gap-4">
+          <QuickReferencePanel onApplyCode={handleApplyCode} />
+        </div>
+
+        {/* RIGHT: Results (flex-1, scrollable) */}
+        <div className="flex-1 overflow-y-auto p-6">
+
           {loading && (
             <div className="text-center py-12 text-sm text-slate-500">Loading criteria...</div>
           )}
@@ -291,11 +274,7 @@ export default function CoverageCheck() {
               </p>
             </div>
           )}
-        </div>
 
-        {/* RIGHT: quick reference panel — always visible */}
-        <div className="w-80 shrink-0">
-          <QuickReferencePanel onApplyCode={handleApplyCode} />
         </div>
       </div>
     </div>
