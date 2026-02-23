@@ -596,26 +596,58 @@ export default function CoverageCheck() {
               <RotateCcw size={11} />
               Reset
             </button>
-            {/* Synthesize toggle */}
-            <button
-              onClick={() => { setSynthesize(s => !s); void runSearch({ icd10: icd10Ref.current, cpt: cptRef.current, serviceType: serviceTypeRef.current }); }}
-              disabled={loading}
-              title="Use AI to synthesize multiple regional policies into one authoritative criteria tree"
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all',
-                synthesize
-                  ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/30'
-                  : 'border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-600',
-              )}
-            >
-              <Sparkles size={11} />
-              {synthesize ? 'Synthesized' : 'Synthesize'}
-            </button>
+            {/* Synthesize toggle — glowing when active */}
+            <div className="relative group/synth">
+              <button
+                onClick={() => { setSynthesize(s => !s); void runSearch({ icd10: icd10Ref.current, cpt: cptRef.current, serviceType: serviceTypeRef.current }); }}
+                disabled={loading}
+                className={cn(
+                  'relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
+                  synthesize
+                    ? 'bg-violet-600 text-white'
+                    : 'border border-violet-200 bg-white text-violet-600 hover:bg-violet-50',
+                )}
+                style={synthesize ? {
+                  boxShadow: '0 0 0 2px rgba(139,92,246,0.4), 0 0 16px rgba(139,92,246,0.5), 0 0 32px rgba(139,92,246,0.25)',
+                  animation: 'synthesize-glow 2s ease-in-out infinite',
+                } : undefined}
+              >
+                <Sparkles size={11} className={synthesize ? 'animate-pulse' : ''} />
+                {loading && synthesize ? 'Synthesizing…' : synthesize ? '✦ Synthesized' : '✦ Synthesize'}
+              </button>
+              {/* Tooltip */}
+              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 group-hover/synth:opacity-100 transition-opacity duration-150 z-50 w-56">
+                <div className="rounded-lg bg-slate-900 px-3 py-2 text-center shadow-xl">
+                  <p className="text-[11px] font-semibold text-white">AI Policy Synthesis</p>
+                  <p className="mt-0.5 text-[10px] text-slate-400 leading-relaxed">
+                    {synthesize
+                      ? 'Showing 1 synthesized criteria tree merged from all matching policies'
+                      : 'Click to generate 1 DT summarizing all matching policies'}
+                  </p>
+                  <div className="mt-1 flex items-center justify-center gap-1 text-[9px] text-violet-400">
+                    <Sparkles size={8} />
+                    Powered by Claude
+                  </div>
+                </div>
+                <div className="mx-auto h-1.5 w-2 overflow-hidden">
+                  <div className="h-2 w-2 rotate-45 bg-slate-900 translate-x-[2px]" />
+                </div>
+              </div>
+            </div>
+            {/* Inject glow keyframe */}
+            <style>{`
+              @keyframes synthesize-glow {
+                0%, 100% { box-shadow: 0 0 0 2px rgba(139,92,246,0.4), 0 0 16px rgba(139,92,246,0.5), 0 0 32px rgba(139,92,246,0.25); }
+                50% { box-shadow: 0 0 0 3px rgba(139,92,246,0.6), 0 0 24px rgba(139,92,246,0.7), 0 0 48px rgba(139,92,246,0.35); }
+              }
+            `}</style>
             {/* Result count */}
             {!loading && results !== null && (
               <span className="ml-auto text-[11px] text-slate-500">
-                <span className="font-semibold text-slate-700">{primary.length}</span> primary
-                {secondary.length > 0 && <> · <span className="font-semibold text-slate-700">{secondary.length}</span> related</>}
+                {synthesize && primary[0]?.policy.policyType === 'SYNTHESIZED'
+                  ? <><span className="font-semibold text-violet-700">1 synthesized</span> · from {primary.length - 1} source{primary.length - 1 !== 1 ? 's' : ''}</>
+                  : <><span className="font-semibold text-slate-700">{primary.length}</span> primary{secondary.length > 0 && <> · <span className="font-semibold text-slate-700">{secondary.length}</span> related</>}</>
+                }
               </span>
             )}
             {error && (
@@ -651,13 +683,33 @@ export default function CoverageCheck() {
                 </div>
               )}
 
-              {/* Primary results */}
-              {!loading && primary.length > 0 && (
+              {/* When synthesize is ON: show only the 1 synthesized DT */}
+              {!loading && synthesize && primary.length > 0 && primary[0]?.policy.policyType === 'SYNTHESIZED' && (
+                <div className="space-y-4">
+                  {renderResult(primary[0]!, 0)}
+                  {/* Collapsed source policies */}
+                  {primary.length > 1 && (
+                    <div className="mt-1">
+                      <button onClick={() => setShowSecondary(s => !s)}
+                        className="flex items-center gap-2 text-xs text-slate-500 transition-colors hover:text-violet-700">
+                        <ChevronDown size={14} className={cn('text-slate-400 transition-transform', showSecondary && 'rotate-180')} />
+                        {showSecondary ? 'Hide' : 'Show'} {primary.length - 1} source polic{primary.length - 1 === 1 ? 'y' : 'ies'} used for synthesis
+                      </button>
+                      {showSecondary && (
+                        <div className="mt-4 space-y-4 opacity-70">{primary.slice(1).map((r, i) => renderResult(r, i + 1))}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Normal mode: show all primary results */}
+              {!loading && (!synthesize || primary[0]?.policy.policyType !== 'SYNTHESIZED') && primary.length > 0 && (
                 <div className="space-y-4">{primary.map((r, i) => renderResult(r, i))}</div>
               )}
 
-              {/* Secondary results */}
-              {!loading && secondary.length > 0 && (
+              {/* Secondary results (comorbidity context) — only in normal mode */}
+              {!loading && !synthesize && secondary.length > 0 && (
                 <div className="mt-2">
                   <button
                     onClick={() => setShowSecondary(s => !s)}
