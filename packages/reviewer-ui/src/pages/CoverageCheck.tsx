@@ -596,56 +596,56 @@ export default function CoverageCheck() {
               <RotateCcw size={11} />
               Reset
             </button>
-            {/* Synthesize toggle — glowing when active */}
-            <div className="relative group/synth">
+            {/* Synthesize toggle — glowing + tooltip */}
+            <style>{`
+              @keyframes synth-glow {
+                0%,100% { box-shadow: 0 0 0 2px rgba(139,92,246,0.5), 0 0 18px rgba(139,92,246,0.55), 0 0 36px rgba(139,92,246,0.28); }
+                50%      { box-shadow: 0 0 0 3px rgba(139,92,246,0.7), 0 0 28px rgba(139,92,246,0.75), 0 0 52px rgba(139,92,246,0.40); }
+              }
+              .synth-tooltip { visibility:hidden; opacity:0; transition:opacity .15s; }
+              .synth-wrap:hover .synth-tooltip { visibility:visible; opacity:1; }
+            `}</style>
+            <div className="synth-wrap relative">
               <button
                 onClick={() => { setSynthesize(s => !s); void runSearch({ icd10: icd10Ref.current, cpt: cptRef.current, serviceType: serviceTypeRef.current }); }}
                 disabled={loading}
                 className={cn(
-                  'relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
+                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
                   synthesize
                     ? 'bg-violet-600 text-white'
                     : 'border border-violet-200 bg-white text-violet-600 hover:bg-violet-50',
                 )}
-                style={synthesize ? {
-                  boxShadow: '0 0 0 2px rgba(139,92,246,0.4), 0 0 16px rgba(139,92,246,0.5), 0 0 32px rgba(139,92,246,0.25)',
-                  animation: 'synthesize-glow 2s ease-in-out infinite',
-                } : undefined}
+                style={synthesize ? { animation: 'synth-glow 2s ease-in-out infinite' } : undefined}
               >
                 <Sparkles size={11} className={synthesize ? 'animate-pulse' : ''} />
-                {loading && synthesize ? 'Synthesizing…' : synthesize ? '✦ Synthesized' : '✦ Synthesize'}
+                {loading && synthesize ? 'Synthesizing…' : synthesize ? '✦ On' : '✦ Synthesize'}
               </button>
-              {/* Tooltip */}
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 group-hover/synth:opacity-100 transition-opacity duration-150 z-50 w-56">
-                <div className="rounded-lg bg-slate-900 px-3 py-2 text-center shadow-xl">
-                  <p className="text-[11px] font-semibold text-white">AI Policy Synthesis</p>
-                  <p className="mt-0.5 text-[10px] text-slate-400 leading-relaxed">
-                    {synthesize
-                      ? 'Showing 1 synthesized criteria tree merged from all matching policies'
-                      : 'Click to generate 1 DT summarizing all matching policies'}
+              {/* Tooltip — pure CSS visibility, no Tailwind variants needed */}
+              <div className="synth-tooltip pointer-events-none absolute bottom-full left-1/2 mb-2.5 z-50 w-60 -translate-x-1/2">
+                <div className="rounded-xl bg-slate-900 px-3.5 py-2.5 shadow-2xl text-center">
+                  <p className="text-[11px] font-bold text-white mb-0.5">
+                    {synthesize ? '✦ Synthesis Active' : '✦ AI Policy Synthesis'}
                   </p>
-                  <div className="mt-1 flex items-center justify-center gap-1 text-[9px] text-violet-400">
-                    <Sparkles size={8} />
-                    Powered by Claude
+                  <p className="text-[10px] text-slate-300 leading-relaxed">
+                    {synthesize
+                      ? 'Showing 1 merged criteria tree. Click again to see all individual policies.'
+                      : 'Click to generate 1 Decision Tree summarizing all matching policies using Claude.'}
+                  </p>
+                  <div className="mt-1.5 flex items-center justify-center gap-1 text-[9px] text-violet-400 font-medium">
+                    <Sparkles size={8} /> Powered by Claude
                   </div>
                 </div>
-                <div className="mx-auto h-1.5 w-2 overflow-hidden">
-                  <div className="h-2 w-2 rotate-45 bg-slate-900 translate-x-[2px]" />
+                {/* Arrow */}
+                <div className="flex justify-center">
+                  <div className="h-0 w-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-900" />
                 </div>
               </div>
             </div>
-            {/* Inject glow keyframe */}
-            <style>{`
-              @keyframes synthesize-glow {
-                0%, 100% { box-shadow: 0 0 0 2px rgba(139,92,246,0.4), 0 0 16px rgba(139,92,246,0.5), 0 0 32px rgba(139,92,246,0.25); }
-                50% { box-shadow: 0 0 0 3px rgba(139,92,246,0.6), 0 0 24px rgba(139,92,246,0.7), 0 0 48px rgba(139,92,246,0.35); }
-              }
-            `}</style>
             {/* Result count */}
             {!loading && results !== null && (
               <span className="ml-auto text-[11px] text-slate-500">
-                {synthesize && primary[0]?.policy.policyType === 'SYNTHESIZED'
-                  ? <><span className="font-semibold text-violet-700">1 synthesized</span> · from {primary.length - 1} source{primary.length - 1 !== 1 ? 's' : ''}</>
+                {synthesize
+                  ? <><span className="font-semibold text-violet-700">1 shown</span> · {primary.length - 1} source{primary.length - 1 !== 1 ? 's' : ''} collapsed</>
                   : <><span className="font-semibold text-slate-700">{primary.length}</span> primary{secondary.length > 0 && <> · <span className="font-semibold text-slate-700">{secondary.length}</span> related</>}</>
                 }
               </span>
@@ -683,17 +683,18 @@ export default function CoverageCheck() {
                 </div>
               )}
 
-              {/* When synthesize is ON: show only the 1 synthesized DT */}
-              {!loading && synthesize && primary.length > 0 && primary[0]?.policy.policyType === 'SYNTHESIZED' && (
+              {/* SYNTHESIZE ON: show only the top result (synthesized or best match) */}
+              {!loading && synthesize && primary.length > 0 && (
                 <div className="space-y-4">
                   {renderResult(primary[0]!, 0)}
-                  {/* Collapsed source policies */}
+                  {/* Collapsed: remaining results (source policies or other primaries) */}
                   {primary.length > 1 && (
                     <div className="mt-1">
                       <button onClick={() => setShowSecondary(s => !s)}
                         className="flex items-center gap-2 text-xs text-slate-500 transition-colors hover:text-violet-700">
                         <ChevronDown size={14} className={cn('text-slate-400 transition-transform', showSecondary && 'rotate-180')} />
-                        {showSecondary ? 'Hide' : 'Show'} {primary.length - 1} source polic{primary.length - 1 === 1 ? 'y' : 'ies'} used for synthesis
+                        {showSecondary ? 'Hide' : 'Show'} {primary.length - 1} source polic{primary.length - 1 === 1 ? 'y' : 'ies'}
+                        {primary[0]?.policy.policyType === 'SYNTHESIZED' ? ' used for synthesis' : ''}
                       </button>
                       {showSecondary && (
                         <div className="mt-4 space-y-4 opacity-70">{primary.slice(1).map((r, i) => renderResult(r, i + 1))}</div>
@@ -703,8 +704,8 @@ export default function CoverageCheck() {
                 </div>
               )}
 
-              {/* Normal mode: show all primary results */}
-              {!loading && (!synthesize || primary[0]?.policy.policyType !== 'SYNTHESIZED') && primary.length > 0 && (
+              {/* NORMAL mode: show all primary results */}
+              {!loading && !synthesize && primary.length > 0 && (
                 <div className="space-y-4">{primary.map((r, i) => renderResult(r, i))}</div>
               )}
 
