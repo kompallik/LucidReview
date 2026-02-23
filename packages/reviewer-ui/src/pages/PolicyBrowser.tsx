@@ -8,14 +8,14 @@ const POLICY_TYPE_FILTERS = [
   { value: '', label: 'All' },
   { value: 'NCD', label: 'NCD' },
   { value: 'LCD', label: 'LCD' },
-  { value: 'Internal', label: 'Internal' },
+  { value: 'INTERNAL', label: 'Internal' },
 ];
 
 function PolicyTypeBadge({ type }: { type: string }) {
   const config: Record<string, string> = {
     NCD: 'bg-blue-50 text-blue-700 ring-blue-600/20',
     LCD: 'bg-teal-50 text-teal-700 ring-teal-600/20',
-    Internal: 'bg-slate-50 text-slate-600 ring-slate-500/20',
+    INTERNAL: 'bg-violet-50 text-violet-700 ring-violet-600/20',
     Article: 'bg-amber-50 text-amber-700 ring-amber-600/20',
   };
 

@@ -42,6 +42,7 @@ export interface CriteriaTreeResult {
     scopeSetting: string;
     scopeRequestType: string;
     cqlLibraryFhirId: string | null;
+    procedureCodes: string[] | null;
   };
   tree: TreeNode;
   matchedOn: { diagnosisCodes: string[]; serviceType?: string };
@@ -103,15 +104,28 @@ export async function getCriteriaTree(
     return [];
   }
 
-  // Find active policies whose sections_json diagnosisCodes overlap with input,
-  // OR that have any active criteria set matching the service type
-  const policies = await db('policies')
-    .where({ status: 'ACTIVE' })
-    .select('id', 'title', 'policy_type', 'cms_id', 'source_url', 'sections_json');
+  // Single JOIN query: fetch policies + criteria_sets together to avoid N+1 queries.
+  // ICD-10 matching is still done in JS for flexible prefix/substring logic.
+  const rows = await db('policies as p')
+    .join('criteria_sets as cs', 'cs.policy_id', 'p.id')
+    .where('p.status', 'ACTIVE')
+    .where('cs.status', 'ACTIVE')
+    .modify((qb) => {
+      if (query.serviceType) {
+        qb.where('cs.scope_setting', query.serviceType.toUpperCase());
+      }
+    })
+    .select(
+      'p.id as policy_id', 'p.title as policy_title', 'p.policy_type',
+      'p.cms_id', 'p.source_url', 'p.sections_json',
+      'cs.id as cs_id', 'cs.criteria_set_id', 'cs.title as cs_title',
+      'cs.scope_setting', 'cs.scope_request_type',
+      'cs.cql_library_fhir_id', 'cs.dsl_json', 'cs.procedure_codes',
+    );
 
   const results: CriteriaTreeResult[] = [];
 
-  for (const policy of policies) {
+  for (const row of rows) {
     // Check if policy covers any of the input diagnosis codes
     let matches = false;
     let relevanceScore = 0;
@@ -119,9 +133,9 @@ export async function getCriteriaTree(
 
     if (inputCodes.length > 0) {
       const sections =
-        typeof policy.sections_json === 'string'
-          ? JSON.parse(policy.sections_json)
-          : (policy.sections_json ?? {});
+        typeof row.sections_json === 'string'
+          ? JSON.parse(row.sections_json)
+          : (row.sections_json ?? {});
       const policyCodes: string[] = (sections.diagnosisCodes ?? []).map((c: string) =>
         c.toUpperCase(),
       );
@@ -145,72 +159,81 @@ export async function getCriteriaTree(
 
     if (!matches && !query.cpt) continue;
 
-    // Find matching criteria sets for this policy
-    let csQuery = db('criteria_sets')
-      .where({ policy_id: policy.id, status: 'ACTIVE' });
-
-    if (query.serviceType) {
-      csQuery = csQuery.where({ scope_setting: query.serviceType.toUpperCase() });
-    }
-
-    const criteriaSets = await csQuery.select(
-      'id', 'criteria_set_id', 'title',
-      'scope_setting', 'scope_request_type',
-      'cql_library_fhir_id', 'dsl_json',
-    );
-
-    for (const cs of criteriaSets) {
-      const dsl =
-        typeof cs.dsl_json === 'string'
-          ? JSON.parse(cs.dsl_json)
-          : (cs.dsl_json ?? {});
-
-      // If dsl_json has a 'tree' root node, use it directly
-      // If it has the old flat 'criteria' array, convert to tree
-      let tree: TreeNode;
-      if (dsl.id && (dsl.type === 'AND' || dsl.type === 'OR' || dsl.type === 'LEAF')) {
-        tree = dsl as TreeNode;
-      } else if (Array.isArray(dsl.criteria)) {
-        // Convert flat list to AND tree
-        tree = {
-          id: 'root',
-          type: 'AND',
-          label: cs.title,
-          required: true,
-          children: dsl.criteria.map((c: { id: string; description: string }) => ({
-            id: c.id,
-            type: 'LEAF' as const,
-            label: c.description,
-            required: true,
-            dataType: 'clinical_note' as const,
-          })),
-        };
-      } else {
-        tree = buildFallbackTree(cs.title);
+    // If a CPT/HCPCS code was provided, skip criteria sets that have procedure_codes
+    // defined but don't include this CPT — this gives the diagnosis+procedure precision
+    if (query.cpt) {
+      const pCodes: string[] = row.procedure_codes
+        ? (typeof row.procedure_codes === 'string'
+            ? JSON.parse(row.procedure_codes)
+            : (row.procedure_codes as string[]))
+        : [];
+      const cptUpper = query.cpt.toUpperCase().trim();
+      // If this criteria set has procedure codes and the CPT isn't in them — skip
+      if (pCodes.length > 0 && !pCodes.some(p => p.toUpperCase() === cptUpper)) {
+        continue;
       }
-
-      results.push({
-        relevanceScore,
-        isPrimary,
-        policy: {
-          id: policy.id,
-          title: policy.title,
-          policyType: policy.policy_type,
-          cmsId: policy.cms_id ?? null,
-          sourceUrl: policy.source_url ?? null,
-        },
-        criteriaSet: {
-          id: cs.id,
-          criteriaSetId: cs.criteria_set_id,
-          title: cs.title,
-          scopeSetting: cs.scope_setting,
-          scopeRequestType: cs.scope_request_type,
-          cqlLibraryFhirId: cs.cql_library_fhir_id ?? null,
-        },
-        tree,
-        matchedOn: { diagnosisCodes: inputCodes, serviceType: query.serviceType },
-      });
+      // CPT match: big relevance boost — this IS the right criteria for the procedure
+      if (pCodes.some(p => p.toUpperCase() === cptUpper)) {
+        relevanceScore = Math.min(120, relevanceScore + 30);
+        isPrimary = true;
+      }
     }
+
+    const dsl =
+      typeof row.dsl_json === 'string'
+        ? JSON.parse(row.dsl_json)
+        : (row.dsl_json ?? {});
+
+    // If dsl_json has a 'tree' root node, use it directly
+    // If it has the old flat 'criteria' array, convert to tree
+    let tree: TreeNode;
+    if (dsl.id && (dsl.type === 'AND' || dsl.type === 'OR' || dsl.type === 'LEAF')) {
+      tree = dsl as TreeNode;
+    } else if (Array.isArray(dsl.criteria)) {
+      // Convert flat list to AND tree
+      tree = {
+        id: 'root',
+        type: 'AND',
+        label: row.cs_title,
+        required: true,
+        children: dsl.criteria.map((c: { id: string; description: string }) => ({
+          id: c.id,
+          type: 'LEAF' as const,
+          label: c.description,
+          required: true,
+          dataType: 'clinical_note' as const,
+        })),
+      };
+    } else {
+      tree = buildFallbackTree(row.cs_title);
+    }
+
+    results.push({
+      relevanceScore,
+      isPrimary,
+      policy: {
+        id: row.policy_id,
+        title: row.policy_title,
+        policyType: row.policy_type,
+        cmsId: row.cms_id ?? null,
+        sourceUrl: row.source_url ?? null,
+      },
+      criteriaSet: {
+        id: row.cs_id,
+        criteriaSetId: row.criteria_set_id,
+        title: row.cs_title,
+        scopeSetting: row.scope_setting,
+        scopeRequestType: row.scope_request_type,
+        cqlLibraryFhirId: row.cql_library_fhir_id ?? null,
+        procedureCodes: row.procedure_codes
+          ? (typeof row.procedure_codes === 'string'
+              ? JSON.parse(row.procedure_codes)
+              : (row.procedure_codes as string[]))
+          : null,
+      },
+      tree,
+      matchedOn: { diagnosisCodes: inputCodes, serviceType: query.serviceType },
+    });
   }
 
   // Sort: primary matches first (by relevance score desc), then secondary
