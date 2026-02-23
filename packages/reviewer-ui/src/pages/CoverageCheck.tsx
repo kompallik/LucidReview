@@ -242,7 +242,7 @@ export default function CoverageCheck() {
       {!searched ? (
         /* ── IDLE: search form ─────────────────────────────────────────────── */
         <div className="flex flex-1 flex-col overflow-hidden bg-slate-50">
-          <div className="flex h-full flex-col justify-center px-10 py-8 max-w-2xl w-full animate-fade-up">
+          <div className="flex h-full flex-col justify-center px-10 py-8 max-w-2xl w-full mx-auto animate-fade-up">
 
             <div className="mb-5">
               <h2 className="text-lg font-bold text-slate-900">Check Coverage Criteria</h2>
