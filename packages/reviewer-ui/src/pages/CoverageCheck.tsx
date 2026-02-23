@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Search, ChevronDown, SearchCheck, Shield, FileText,
   Activity, GitBranch, Sparkles, CheckCircle2, RotateCcw,
@@ -61,6 +61,19 @@ const SERVICE_TYPES = [
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface CriteriaCombo {
+  policyId: string;
+  policyTitle: string;
+  policyType: string;
+  cmsId: string | null;
+  criteriaSetId: string;
+  scopeSetting: string;
+  icd10: string;
+  allIcd10: string[];
+  cpt: string;
+  allCpt: string[];
+}
+
 interface TreeResult {
   relevanceScore?: number;
   isPrimary?: boolean;
@@ -82,8 +95,27 @@ export default function CoverageCheck() {
   const [searched, setSearched] = useState(false);
   const [showSecondary, setShowSecondary] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [helpCombos, setHelpCombos] = useState<CriteriaCombo[]>([]);
+  const [helpTotal, setHelpTotal] = useState(0);
+  const [helpSearch, setHelpSearch] = useState('');
+  const [helpSetting, setHelpSetting] = useState('OUTPATIENT');
+  const [helpLoading, setHelpLoading] = useState(false);
 
   const token = localStorage.getItem('lucidreview_token');
+
+  // Fetch combos when modal opens or filters change
+  useEffect(() => {
+    if (!showHelp) return;
+    setHelpLoading(true);
+    const params = new URLSearchParams();
+    if (helpSearch.trim()) params.set('q', helpSearch.trim());
+    if (helpSetting) params.set('setting', helpSetting);
+    fetch(`/api/criteria-combos?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setHelpCombos(d.combos ?? []); setHelpTotal(d.total ?? 0); })
+      .catch(() => {})
+      .finally(() => setHelpLoading(false));
+  }, [showHelp, helpSearch, helpSetting, token]);
 
   const icd10Ref = useRef(icd10);
   const cptRef = useRef(cpt);
@@ -378,124 +410,105 @@ export default function CoverageCheck() {
               </div>
             </div>
 
-            {/* ── Help Modal ── */}
+            {/* ── Help Modal — dynamic, fetches all 1000+ policy combos ── */}
             {showHelp && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowHelp(false)} />
-                <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl flex flex-col" style={{ maxHeight: '80vh' }}>
+                <div className="relative z-10 w-full max-w-2xl rounded-2xl bg-white shadow-2xl flex flex-col" style={{ maxHeight: '85vh' }}>
+
                   {/* Modal header */}
                   <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">All Supported Clinical Combos</h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Click any row to load the criteria decision tree</p>
+                      <h3 className="text-sm font-bold text-slate-900">Coverage Criteria Library</h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {helpLoading ? 'Loading…' : `${helpTotal.toLocaleString()} policy combos · click any row to load its criteria tree`}
+                      </p>
                     </div>
                     <button onClick={() => setShowHelp(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                       <X size={16} />
                     </button>
                   </div>
-                  {/* Scrollable list */}
-                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
-                    {(() => {
-                      // Import inline since we can't import at the top from QuickReferencePanel without a circular dep
-                      const SETTING_COLORS: Record<string, string> = {
-                        OUTPATIENT: 'bg-emerald-100 text-emerald-700',
-                        INPATIENT: 'bg-blue-100 text-blue-700',
-                        DME: 'bg-amber-100 text-amber-700',
-                        HOME_HEALTH: 'bg-violet-100 text-violet-700',
-                      };
 
-                      const SPECIALTY_ICONS: Record<string, React.ReactNode> = {
-                        'Pain Management': <Zap size={12} className="text-orange-500" />,
-                        'Orthopedic':      <Bone size={12} className="text-blue-500" />,
-                        'Spine':           <Activity size={12} className="text-blue-400" />,
-                        'Ophthalmology':   <Eye size={12} className="text-violet-500" />,
-                        'GI':              <Scan size={12} className="text-teal-500" />,
-                        'Cardiology':      <Heart size={12} className="text-rose-500" />,
-                        'Pulmonology':     <FlaskConical size={12} className="text-sky-500" />,
-                        'Mental Health':   <Brain size={12} className="text-purple-500" />,
-                        'Neurology':       <Zap size={12} className="text-yellow-500" />,
-                        'Oncology':        <Microscope size={12} className="text-pink-500" />,
-                        'Endocrine':       <Pill size={12} className="text-emerald-500" />,
-                        'Nephrology':      <Syringe size={12} className="text-cyan-500" />,
-                        'Transplant':      <Stethoscope size={12} className="text-indigo-500" />,
-                        'Inpatient':       <Shield size={12} className="text-slate-500" />,
-                        'DME':             <Activity size={12} className="text-amber-500" />,
-                      };
-
-                      // All combos from QuickReferencePanel
-                      const ALL_COMBOS = [
-                        { label:'Back Pain + Facet Injection',        icd10:'M54.50', cpt:'64493', setting:'OUTPATIENT', category:'Pain Management' },
-                        { label:'Back Pain + Epidural Steroid',       icd10:'M54.10', cpt:'62321', setting:'OUTPATIENT', category:'Pain Management' },
-                        { label:'Knee OA + Arthroscopy',              icd10:'M17.11', cpt:'29881', setting:'OUTPATIENT', category:'Orthopedic' },
-                        { label:'Knee OA + Total Knee (Outpt)',       icd10:'M17.11', cpt:'27447', setting:'OUTPATIENT', category:'Orthopedic' },
-                        { label:'Shoulder Tear + Arthroscopy',        icd10:'M75.120',cpt:'29827', setting:'OUTPATIENT', category:'Orthopedic' },
-                        { label:'Lumbar Stenosis + Laminectomy',      icd10:'M48.061',cpt:'63047', setting:'OUTPATIENT', category:'Spine' },
-                        { label:'Cataract + Phaco Surgery',           icd10:'H25.9',  cpt:'66984', setting:'OUTPATIENT', category:'Ophthalmology' },
-                        { label:'Glaucoma + Laser Trabeculoplasty',   icd10:'H40.10', cpt:'65855', setting:'OUTPATIENT', category:'Ophthalmology' },
-                        { label:'Retinal Disease + Vitrectomy',       icd10:'H33.001',cpt:'67036', setting:'OUTPATIENT', category:'Ophthalmology' },
-                        { label:'Colon Cancer Screen + Colonoscopy',  icd10:'Z12.11', cpt:'45378', setting:'OUTPATIENT', category:'GI' },
-                        { label:'Diverticulosis + Colonoscopy',       icd10:'K57.30', cpt:'45385', setting:'OUTPATIENT', category:'GI' },
-                        { label:'Dyspepsia + Upper Endoscopy (EGD)',  icd10:'K30',    cpt:'43239', setting:'OUTPATIENT', category:'GI' },
-                        { label:'CAD + Cardiac Stress Test',          icd10:'I25.10', cpt:'93015', setting:'OUTPATIENT', category:'Cardiology' },
-                        { label:'Chest Pain + Echo (TTE)',            icd10:'R07.9',  cpt:'93306', setting:'OUTPATIENT', category:'Cardiology' },
-                        { label:'CAD + Nuclear Stress (SPECT)',       icd10:'I25.10', cpt:'78452', setting:'OUTPATIENT', category:'Cardiology' },
-                        { label:'CAD + Coronary CT Angio (CCTA)',     icd10:'I25.10', cpt:'75574', setting:'OUTPATIENT', category:'Cardiology' },
-                        { label:'Sleep Apnea + Polysomnography',      icd10:'G47.33', cpt:'95810', setting:'OUTPATIENT', category:'Pulmonology' },
-                        { label:'Sleep Apnea + CPAP',                 icd10:'G47.33', cpt:'E0601', setting:'DME',        category:'Pulmonology' },
-                        { label:'Major Depression + TMS',             icd10:'F32.9',  cpt:'90867', setting:'OUTPATIENT', category:'Mental Health' },
-                        { label:'Major Depression + Psychotherapy',   icd10:'F32.9',  cpt:'90837', setting:'OUTPATIENT', category:'Mental Health' },
-                        { label:'Low Back + EMG/Nerve Conduction',    icd10:'M54.50', cpt:'95886', setting:'OUTPATIENT', category:'Neurology' },
-                        { label:'Lung Cancer + Chemotherapy',         icd10:'C34.90', cpt:'96413', setting:'OUTPATIENT', category:'Oncology' },
-                        { label:'Breast Cancer + IMRT Radiation',     icd10:'C50.919',cpt:'77301', setting:'OUTPATIENT', category:'Oncology' },
-                        { label:'T2 Diabetes + Blood Glucose Lab',    icd10:'E11.9',  cpt:'82947', setting:'OUTPATIENT', category:'Endocrine' },
-                        { label:'Diabetes + CGM Initiation',          icd10:'E11.65', cpt:'95250', setting:'OUTPATIENT', category:'Endocrine' },
-                        { label:'Obesity + Bariatric Surgery',        icd10:'E66.01', cpt:'43644', setting:'OUTPATIENT', category:'Endocrine' },
-                        { label:'Skin Cancer + Mohs Surgery',         icd10:'C44.91', cpt:'17311', setting:'OUTPATIENT', category:'Oncology' },
-                        { label:'ESRD + Hemodialysis',                icd10:'N18.6',  cpt:'90935', setting:'OUTPATIENT', category:'Nephrology' },
-                        { label:'Hip OA + Total Hip Replacement',     icd10:'M16.11', cpt:'27130', setting:'INPATIENT',  category:'Inpatient' },
-                        { label:'ARF + BiPAP Ventilation',            icd10:'J96.00', cpt:'94660', setting:'INPATIENT',  category:'Inpatient' },
-                        { label:'Heart Failure + Echocardiogram',     icd10:'I50.9',  cpt:'93306', setting:'INPATIENT',  category:'Inpatient' },
-                        { label:'Sepsis + Central Line Insertion',    icd10:'A41.9',  cpt:'36555', setting:'INPATIENT',  category:'Inpatient' },
-                        { label:'COPD + Home Oxygen',                 icd10:'J44.9',  cpt:'E1390', setting:'HOME_HEALTH',category:'DME' },
-                      ];
-
-                      const categories = [...new Set(ALL_COMBOS.map(c => c.category))];
-                      return categories.map(cat => (
-                        <div key={cat}>
-                          <div className="flex items-center gap-1.5 py-1.5 sticky top-0 bg-white">
-                            {SPECIALTY_ICONS[cat] ?? <Activity size={12} className="text-slate-400" />}
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{cat}</span>
-                          </div>
-                          {ALL_COMBOS.filter(c => c.category === cat).map(combo => (
-                            <button
-                              key={combo.label}
-                              onClick={() => {
-                                setIcd10(combo.icd10); setCpt(combo.cpt); setServiceType(combo.setting);
-                                setShowHelp(false);
-                                void runSearch({ icd10: combo.icd10, cpt: combo.cpt, serviceType: combo.setting });
-                              }}
-                              className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-indigo-50 transition-colors group"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-slate-800 group-hover:text-indigo-700 truncate">{combo.label}</p>
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <span className="font-mono text-[9px] text-slate-500">{combo.icd10}</span>
-                                  <span className="text-slate-300 text-[9px]">·</span>
-                                  <span className="font-mono text-[9px] text-slate-500">{combo.cpt}</span>
-                                </div>
-                              </div>
-                              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold ${SETTING_COLORS[combo.setting] ?? 'bg-slate-100 text-slate-600'}`}>
-                                {combo.setting.replace('_',' ')}
-                              </span>
-                              <ArrowRight size={11} className="shrink-0 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-                          ))}
-                        </div>
-                      ));
-                    })()}
+                  {/* Filters */}
+                  <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5 bg-slate-50/60">
+                    <div className="relative flex-1">
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        value={helpSearch}
+                        onChange={e => setHelpSearch(e.target.value)}
+                        placeholder="Search policy, ICD-10, CPT code…"
+                        className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/30"
+                      />
+                    </div>
+                    <div className="flex gap-1">
+                      {[{v:'',l:'All'},{v:'OUTPATIENT',l:'Outpt'},{v:'INPATIENT',l:'Inpt'},{v:'DME',l:'DME'},{v:'HOME_HEALTH',l:'Home'}].map(({v,l}) => (
+                        <button key={v} onClick={() => setHelpSetting(v)}
+                          className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ${helpSetting===v ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="border-t border-slate-100 px-5 py-3 text-[10px] text-slate-400 text-center">
-                    {33} combos verified · all return ≥1 criteria decision tree
+
+                  {/* Scrollable list */}
+                  <div className="flex-1 overflow-y-auto">
+                    {helpLoading ? (
+                      <div className="flex items-center justify-center py-16 gap-2 text-slate-400">
+                        <Loader2 size={16} className="animate-spin" />
+                        <span className="text-xs">Loading policy library…</span>
+                      </div>
+                    ) : helpCombos.length === 0 ? (
+                      <div className="flex items-center justify-center py-16 text-slate-400 text-xs">No policies found</div>
+                    ) : (
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 w-16">Type</th>
+                            <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">Policy</th>
+                            <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 w-24">ICD-10</th>
+                            <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 w-24">CPT</th>
+                            <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 w-24">Setting</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {helpCombos.map((c, i) => {
+                            const settingColor = c.scopeSetting === 'OUTPATIENT' ? 'bg-emerald-100 text-emerald-700' :
+                              c.scopeSetting === 'INPATIENT' ? 'bg-blue-100 text-blue-700' :
+                              c.scopeSetting === 'DME' ? 'bg-amber-100 text-amber-700' :
+                              'bg-violet-100 text-violet-700';
+                            const typeColor = c.policyType === 'NCD' ? 'bg-blue-50 text-blue-700 ring-blue-200' :
+                              c.policyType === 'LCD' ? 'bg-teal-50 text-teal-700 ring-teal-200' :
+                              'bg-violet-50 text-violet-700 ring-violet-200';
+                            return (
+                              <tr key={i} onClick={() => {
+                                setIcd10(c.icd10); setCpt(c.cpt); setServiceType(c.scopeSetting);
+                                setShowHelp(false);
+                                void runSearch({ icd10: c.icd10, cpt: c.cpt, serviceType: c.scopeSetting });
+                              }}
+                                className="border-b border-slate-50 hover:bg-indigo-50/60 cursor-pointer transition-colors group">
+                                <td className="px-4 py-2.5">
+                                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1 ring-inset ${typeColor}`}>{c.policyType}</span>
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <div className="font-medium text-slate-800 group-hover:text-indigo-700 leading-snug line-clamp-1">{c.policyTitle}</div>
+                                  {c.cmsId && <div className="font-mono text-[9px] text-slate-400 mt-0.5">{c.cmsId}</div>}
+                                </td>
+                                <td className="px-4 py-2.5 font-mono text-[11px] font-semibold text-slate-700">{c.icd10}</td>
+                                <td className="px-4 py-2.5 font-mono text-[11px] font-semibold text-slate-700">{c.cpt}</td>
+                                <td className="px-4 py-2.5">
+                                  <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${settingColor}`}>{c.scopeSetting.replace('_',' ')}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 px-5 py-2.5 flex items-center justify-between text-[10px] text-slate-400">
+                    <span>{helpTotal.toLocaleString()} total · {helpCombos.length} shown</span>
+                    <span>Click any row to instantly load its criteria tree →</span>
                   </div>
                 </div>
               </div>
