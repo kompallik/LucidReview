@@ -1,0 +1,499 @@
+{
+  "resourceType": "Library",
+  "id": "UM-InpatientAdmission-AcuteRespFailure",
+  "url": "http://lucidreview.dev/Library/UM-InpatientAdmission-AcuteRespFailure",
+  "name": "UM-InpatientAdmission-AcuteRespFailure",
+  "title": "Acute Respiratory Failure — Inpatient Admission Criteria",
+  "version": "1.0.0",
+  "status": "active",
+  "experimental": false,
+  "type": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/library-type",
+        "code": "logic-library",
+        "display": "Logic Library"
+      }
+    ]
+  },
+  "description": "CQL library evaluating inpatient admission criteria for: Acute Respiratory Failure — Inpatient Admission Criteria",
+  "purpose": "Utilization management criteria evaluation for prior authorization of inpatient admissions.",
+  "relatedArtifact": [
+    {
+      "type": "depends-on",
+      "display": "FHIR Helpers",
+      "resource": "http://fhir.org/guides/cqf/common/Library/FHIRHelpers|4.0.1"
+    }
+  ],
+  "parameter": [
+    {
+      "name": "Measurement Period",
+      "use": "in",
+      "min": 0,
+      "max": "1",
+      "type": "Period"
+    },
+    {
+      "name": "Patient",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "Patient"
+    },
+    {
+      "name": "Active Medicare Coverage",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Active Medicare Part A Coverage",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "CoverageMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Acute Respiratory Failure Condition Codes",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Active Respiratory Failure Conditions",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Qualifying Respiratory Failure Diagnosis",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "DiagnosisMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Recent SpO2 Observations",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Low SpO2",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "SpO2Met",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Recent Arterial pO2 Observations",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Low Arterial pO2",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "pO2Met",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "HypoxemiaMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Recent Respiratory Rate Observations",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Elevated Respiratory Rate",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "RespRateMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Recent Arterial pCO2 Observations",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Hypercapnia",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "HypercapniaMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Recent Arterial pH Observations",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Respiratory Acidosis",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "AcidosisMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "VentilatoryFailureMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "ClinicalEvidenceMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Treatment Failure Clinical Notes",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Treatment Failure Documentation",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "TreatmentFailureMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Non-Invasive Ventilation Procedure Codes",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Inpatient Monitoring Procedure Codes",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Recent NIV Procedures",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Recent Inpatient Monitoring Procedures",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Ordered NIV Procedures",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Ordered Inpatient Monitoring",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Has Inpatient-Level Procedure or Order",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "InpatientNeedMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "DiagnosisCriterionMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "HypoxiaCriterionMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "VentilatoryCriterionMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "ClinicalEvidenceCriterionMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "TreatmentFailureCriterionMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "InpatientNeedCriterionMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "CoverageCriterionMet",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing SpO2 Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing pO2 Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing Hypoxemia Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing Respiratory Rate Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing pCO2 Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing pH Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing Ventilatory Failure Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing Clinical Evidence Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing Treatment Failure Documentation",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing Inpatient Need Documentation",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Missing Coverage Data",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Failed Coverage Criterion",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Failed Diagnosis Criterion",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Failed Hypoxemia Criterion",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Failed Ventilatory Failure Criterion",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    },
+    {
+      "name": "Failed Clinical Evidence Criterion",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "type": "boolean"
+    }
+  ],
+  "dataRequirement": [
+    {
+      "type": "Condition",
+      "codeFilter": [
+        {
+          "path": "code",
+          "code": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "J96.00"
+            },
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "J96.01"
+            },
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "J96.09"
+            },
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "J96.90"
+            },
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "J96.91"
+            },
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "J96.99"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "content": [
+    {
+      "contentType": "text/cql",
+      "data": "bGlicmFyeSBVTV9JbnBhdGllbnRBZG1pc3Npb25fQWN1dGVSZXNwRmFpbHVyZSB2ZXJzaW9uICcxLjAuMCcKCnVzaW5nIEZISVIgdmVyc2lvbiAnNC4wLjEnCmluY2x1ZGUgRkhJUkhlbHBlcnMgdmVyc2lvbiAnNC4wLjEnIGNhbGxlZCBGSElSSGVscGVycwoKY29kZXN5c3RlbSAiSUNEMTBDTSI6ICdodHRwOi8vaGw3Lm9yZy9maGlyL3NpZC9pY2QtMTAtY20nCmNvZGVzeXN0ZW0gIkxPSU5DIjogJ2h0dHA6Ly9sb2luYy5vcmcnCmNvZGVzeXN0ZW0gIlNOT01FRENUIjogJ2h0dHA6Ly9zbm9tZWQuaW5mby9zY3QnCmNvZGVzeXN0ZW0gIkNQVCI6ICdodHRwOi8vd3d3LmFtYS1hc3NuLm9yZy9nby9jcHQnCgp2YWx1ZXNldCAiQWN1dGUgUmVzcGlyYXRvcnkgRmFpbHVyZSBEaWFnbm9zZXMiOiAnaHR0cDovL2x1Y2lkcmV2aWV3LmRldi9WYWx1ZVNldC9hY3V0ZS1yZXNwaXJhdG9yeS1mYWlsdXJlJwp2YWx1ZXNldCAiTWVkaWNhcmUgUGFydCBBIENvdmVyYWdlIFR5cGVzIjogJ2h0dHA6Ly9sdWNpZHJldmlldy5kZXYvVmFsdWVTZXQvbWVkaWNhcmUtcGFydC1hLWNvdmVyYWdlJwp2YWx1ZXNldCAiTm9uLUludmFzaXZlIFZlbnRpbGF0aW9uIFByb2NlZHVyZXMiOiAnaHR0cDovL2x1Y2lkcmV2aWV3LmRldi9WYWx1ZVNldC9ub24taW52YXNpdmUtdmVudGlsYXRpb24nCnZhbHVlc2V0ICJJbnBhdGllbnQgTW9uaXRvcmluZyBQcm9jZWR1cmVzIjogJ2h0dHA6Ly9sdWNpZHJldmlldy5kZXYvVmFsdWVTZXQvaW5wYXRpZW50LW1vbml0b3JpbmcnCgovLyBJQ0QtMTAgRGlhZ25vc2lzIENvZGVzIOKAlCBBY3V0ZSBSZXNwaXJhdG9yeSBGYWlsdXJlCmNvZGUgIkFjdXRlIHJlc3BpcmF0b3J5IGZhaWx1cmUsIHVuc3BlY2lmaWVkLCB3aXRob3V0IG1lbnRpb24gb2YgaHlwb3hpYS9oeXBlcmNhcG5pYSI6ICdKOTYuMDAnIGZyb20gIklDRDEwQ00iIGRpc3BsYXkgJ0FjdXRlIHJlc3BpcmF0b3J5IGZhaWx1cmUsIHVuc3BlY2lmaWVkJwpjb2RlICJBY3V0ZSByZXNwaXJhdG9yeSBmYWlsdXJlIHdpdGggaHlwb3hpYSI6ICdKOTYuMDEnIGZyb20gIklDRDEwQ00iIGRpc3BsYXkgJ0FjdXRlIHJlc3BpcmF0b3J5IGZhaWx1cmUgd2l0aCBoeXBveGlhJwpjb2RlICJBY3V0ZSByZXNwaXJhdG9yeSBmYWlsdXJlIHdpdGggaHlwZXJjYXBuaWEiOiAnSjk2LjA5JyBmcm9tICJJQ0QxMENNIiBkaXNwbGF5ICdBY3V0ZSByZXNwaXJhdG9yeSBmYWlsdXJlIHdpdGggaHlwZXJjYXBuaWEnCmNvZGUgIlJlc3BpcmF0b3J5IGZhaWx1cmUsIHVuc3BlY2lmaWVkLCB1bnNwZWNpZmllZCB3aGV0aGVyIHdpdGggaHlwb3hpYSBvciBoeXBlcmNhcG5pYSI6ICdKOTYuOTAnIGZyb20gIklDRDEwQ00iIGRpc3BsYXkgJ1Jlc3BpcmF0b3J5IGZhaWx1cmUsIHVuc3BlY2lmaWVkJwpjb2RlICJSZXNwaXJhdG9yeSBmYWlsdXJlLCB1bnNwZWNpZmllZCwgd2l0aCBoeXBveGlhIjogJ0o5Ni45MScgZnJvbSAiSUNEMTBDTSIgZGlzcGxheSAnUmVzcGlyYXRvcnkgZmFpbHVyZSwgdW5zcGVjaWZpZWQsIHdpdGggaHlwb3hpYScKY29kZSAiUmVzcGlyYXRvcnkgZmFpbHVyZSwgdW5zcGVjaWZpZWQsIHdpdGggaHlwZXJjYXBuaWEiOiAnSjk2Ljk5JyBmcm9tICJJQ0QxMENNIiBkaXNwbGF5ICdSZXNwaXJhdG9yeSBmYWlsdXJlLCB1bnNwZWNpZmllZCwgd2l0aCBoeXBlcmNhcG5pYScKCi8vIExPSU5DIE9ic2VydmF0aW9uIENvZGVzCmNvZGUgIlNwTzIgYnkgcHVsc2Ugb3hpbWV0cnkiOiAnMjcwOC02JyBmcm9tICJMT0lOQyIgZGlzcGxheSAnT3h5Z2VuIHNhdHVyYXRpb24gaW4gQXJ0ZXJpYWwgYmxvb2QnCmNvZGUgIlNwTzIgYnkgcHVsc2Ugb3hpbWV0cnkgNTk0MDgiOiAnNTk0MDgtNScgZnJvbSAiTE9JTkMiIGRpc3BsYXkgJ094eWdlbiBzYXR1cmF0aW9uIGJ5IHB1bHNlIG94aW1ldHJ5Jwpjb2RlICJBcnRlcmlhbCBwTzIiOiAnMjcwMy03JyBmcm9tICJMT0lOQyIgZGlzcGxheSAnT3h5Z2VuIFtQYXJ0aWFsIHByZXNzdXJlXSBpbiBBcnRlcmlhbCBibG9vZCcKY29kZSAiUmVzcGlyYXRvcnkgcmF0ZSI6ICc5Mjc5LTEnIGZyb20gIkxPSU5DIiBkaXNwbGF5ICdSZXNwaXJhdG9yeSByYXRlJwpjb2RlICJBcnRlcmlhbCBwQ08yIjogJzIwMTktOCcgZnJvbSAiTE9JTkMiIGRpc3BsYXkgJ0NhcmJvbiBkaW94aWRlIFtQYXJ0aWFsIHByZXNzdXJlXSBpbiBBcnRlcmlhbCBibG9vZCcKY29kZSAiQXJ0ZXJpYWwgYmxvb2QgcEgiOiAnMjc0NC0xJyBmcm9tICJMT0lOQyIgZGlzcGxheSAncEggb2YgQXJ0ZXJpYWwgYmxvb2QnCgovLyBDUFQgUHJvY2VkdXJlIENvZGVzIOKAlCBJbnBhdGllbnQtTGV2ZWwgSW50ZXJ2ZW50aW9ucwpjb2RlICJDUEFQIEJpUEFQIGluaXRpYXRpb24iOiAnOTQ2NjAnIGZyb20gIkNQVCIgZGlzcGxheSAnQ1BBUC9CaVBBUCBpbml0aWF0aW9uIGFuZCBtYW5hZ2VtZW50Jwpjb2RlICJWZW50aWxhdGlvbiBtYW5hZ2VtZW50IjogJzk0MDAyJyBmcm9tICJDUFQiIGRpc3BsYXkgJ1ZlbnRpbGF0aW9uIG1hbmFnZW1lbnQsIGhvc3BpdGFsIGlucGF0aWVudCcKY29kZSAiQ29udGludW91cyBwdWxzZSBveGltZXRyeSI6ICc5NDc2MCcgZnJvbSAiQ1BUIiBkaXNwbGF5ICdOb25pbnZhc2l2ZSBlYXIgb3IgcHVsc2Ugb3hpbWV0cnkgc2luZ2xlIGRldGVybWluYXRpb24nCgpwYXJhbWV0ZXIgIk1lYXN1cmVtZW50IFBlcmlvZCIgSW50ZXJ2YWw8RGF0ZVRpbWU+CiAgZGVmYXVsdCBJbnRlcnZhbFtAMjAyNi0wMS0wMVQwMDowMDowMC4wLCBAMjAyNi0xMi0zMVQyMzo1OTo1OS4wXQoKcGFyYW1ldGVyICJBY3V0ZSBPYnNlcnZhdGlvbiBXaW5kb3cgSG91cnMiIEludGVnZXIKICBkZWZhdWx0IDEyCgpwYXJhbWV0ZXIgIkxhYiBSZXN1bHQgV2luZG93IEhvdXJzIiBJbnRlZ2VyCiAgZGVmYXVsdCAyNAoKY29udGV4dCBQYXRpZW50CgovLwovLyDilIDilIDilIAgU0VDVElPTiAxOiBDT1ZFUkFHRSDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKLy8KCmRlZmluZSAiQWN0aXZlIE1lZGljYXJlIENvdmVyYWdlIjoKICBbQ292ZXJhZ2VdIEMKICAgIHdoZXJlIEMuc3RhdHVzID0gJ2FjdGl2ZScKICAgICAgYW5kIEMudHlwZS5jb2RpbmcuY29kZSBpbiB7ICdNZWRpY2FyZScsICdNRURJQ0FSRScsICdwYXJ0LWEnLCAnTUEnIH0KCmRlZmluZSAiSGFzIEFjdGl2ZSBNZWRpY2FyZSBQYXJ0IEEgQ292ZXJhZ2UiOgogIGV4aXN0cyAoCiAgICBbQ292ZXJhZ2VdIEMKICAgICAgd2hlcmUgQy5zdGF0dXMgPSAnYWN0aXZlJwogICAgICAgIGFuZCAoCiAgICAgICAgICBDLnR5cGUuY29kaW5nLmNvZGUgaW4geyAnTWVkaWNhcmUnLCAnTUVESUNBUkUnLCAncGFydC1hJywgJ01BJyB9CiAgICAgICAgICAgIG9yIEMuY2xhc3MuZXhpc3RzKGNsIHwgY2wudHlwZS5jb2RpbmcuY29kZSBpbiB7ICdwYXJ0LWEnLCAncGFydEEnLCAnUEFSVEEnIH0pCiAgICAgICAgKQogICkKICAgIG9yIGV4aXN0cyAoCiAgICAgIFtDb3ZlcmFnZV0gQwogICAgICAgIHdoZXJlIEMuc3RhdHVzID0gJ2FjdGl2ZScKICAgICAgICAgIGFuZCBDLnBheW9yLmV4aXN0cygpCiAgICAgICAgICBhbmQgQy5zdWJzY3JpYmVySWQgaXMgbm90IG51bGwKICAgICkKCmRlZmluZSAiQ292ZXJhZ2VNZXQiOgogICJIYXMgQWN0aXZlIE1lZGljYXJlIFBhcnQgQSBDb3ZlcmFnZSIKCi8vCi8vIOKUgOKUgOKUgCBTRUNUSU9OIDI6IFFVQUxJRllJTkcgRElBR05PU0lTIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAovLwoKZGVmaW5lICJBY3V0ZSBSZXNwaXJhdG9yeSBGYWlsdXJlIENvbmRpdGlvbiBDb2RlcyI6CiAgewogICAgJ0o5Ni4wMCcsICdKOTYuMDEnLCAnSjk2LjA5JywKICAgICdKOTYuOTAnLCAnSjk2LjkxJywgJ0o5Ni45OScKICB9CgpkZWZpbmUgIkFjdGl2ZSBSZXNwaXJhdG9yeSBGYWlsdXJlIENvbmRpdGlvbnMiOgogIFtDb25kaXRpb25dIEMKICAgIHdoZXJlIEMuY29kZS5jb2RpbmcuZXhpc3RzKGNvZGluZyB8IGNvZGluZy5jb2RlIGluICJBY3V0ZSBSZXNwaXJhdG9yeSBGYWlsdXJlIENvbmRpdGlvbiBDb2RlcyIpCiAgICAgIGFuZCBDLmNsaW5pY2FsU3RhdHVzLmNvZGluZy5jb2RlIGluIHsgJ2FjdGl2ZScsICdyZWN1cnJlbmNlJywgJ3JlbGFwc2UnIH0KCmRlZmluZSAiSGFzIFF1YWxpZnlpbmcgUmVzcGlyYXRvcnkgRmFpbHVyZSBEaWFnbm9zaXMiOgogIGV4aXN0cyAoIkFjdGl2ZSBSZXNwaXJhdG9yeSBGYWlsdXJlIENvbmRpdGlvbnMiKQoKZGVmaW5lICJEaWFnbm9zaXNNZXQiOgogICJIYXMgUXVhbGlmeWluZyBSZXNwaXJhdG9yeSBGYWlsdXJlIERpYWdub3NpcyIKCi8vCi8vIOKUgOKUgOKUgCBTRUNUSU9OIDM6IEhZUE9YRU1JQSDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKLy8KCmRlZmluZSAiUmVjZW50IFNwTzIgT2JzZXJ2YXRpb25zIjoKICAoCiAgICBbT2JzZXJ2YXRpb246ICJTcE8yIGJ5IHB1bHNlIG94aW1ldHJ5Il0KICAgICAgdW5pb24gW09ic2VydmF0aW9uOiAiU3BPMiBieSBwdWxzZSBveGltZXRyeSA1OTQwOCJdCiAgKSBPCiAgICB3aGVyZSBPLnN0YXR1cyBpbiB7ICdmaW5hbCcsICdhbWVuZGVkJywgJ2NvcnJlY3RlZCcgfQogICAgICBhbmQgTy5lZmZlY3RpdmUgaXMgbm90IG51bGwKICAgICAgYW5kIChPLmVmZmVjdGl2ZSBhcyBkYXRlVGltZSkgPj0gKE5vdygpIC0gU3lzdGVtLlF1YW50aXR5IHsgdmFsdWU6ICJBY3V0ZSBPYnNlcnZhdGlvbiBXaW5kb3cgSG91cnMiLCB1bml0OiAnaCcgfSkKCmRlZmluZSAiSGFzIExvdyBTcE8yIjoKICBleGlzdHMgKAogICAgIlJlY2VudCBTcE8yIE9ic2VydmF0aW9ucyIgTwogICAgICB3aGVyZSAoTy52YWx1ZSBhcyBGSElSLlF1YW50aXR5KS52YWx1ZSA8IDkwCiAgKQoKZGVmaW5lICJTcE8yTWV0IjoKICAiSGFzIExvdyBTcE8yIgoKZGVmaW5lICJSZWNlbnQgQXJ0ZXJpYWwgcE8yIE9ic2VydmF0aW9ucyI6CiAgW09ic2VydmF0aW9uOiAiQXJ0ZXJpYWwgcE8yIl0gTwogICAgd2hlcmUgTy5zdGF0dXMgaW4geyAnZmluYWwnLCAnYW1lbmRlZCcsICdjb3JyZWN0ZWQnIH0KICAgICAgYW5kIE8uZWZmZWN0aXZlIGlzIG5vdCBudWxsCiAgICAgIGFuZCAoTy5lZmZlY3RpdmUgYXMgZGF0ZVRpbWUpID49IChOb3coKSAtIFN5c3RlbS5RdWFudGl0eSB7IHZhbHVlOiAiTGFiIFJlc3VsdCBXaW5kb3cgSG91cnMiLCB1bml0OiAnaCcgfSkKCmRlZmluZSAiSGFzIExvdyBBcnRlcmlhbCBwTzIiOgogIGV4aXN0cyAoCiAgICAiUmVjZW50IEFydGVyaWFsIHBPMiBPYnNlcnZhdGlvbnMiIE8KICAgICAgd2hlcmUgKE8udmFsdWUgYXMgRkhJUi5RdWFudGl0eSkudmFsdWUgPCA2MAogICkKCmRlZmluZSAicE8yTWV0IjoKICAiSGFzIExvdyBBcnRlcmlhbCBwTzIiCgpkZWZpbmUgIkh5cG94ZW1pYU1ldCI6CiAgIkhhcyBMb3cgU3BPMiIgb3IgIkhhcyBMb3cgQXJ0ZXJpYWwgcE8yIgoKLy8KLy8g4pSA4pSA4pSAIFNFQ1RJT04gNDogVkVOVElMQVRPUlkgRkFJTFVSRSAvIFJFU1BJUkFUT1JZIERJU1RSRVNTIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAovLwoKZGVmaW5lICJSZWNlbnQgUmVzcGlyYXRvcnkgUmF0ZSBPYnNlcnZhdGlvbnMiOgogIFtPYnNlcnZhdGlvbjogIlJlc3BpcmF0b3J5IHJhdGUiXSBPCiAgICB3aGVyZSBPLnN0YXR1cyBpbiB7ICdmaW5hbCcsICdhbWVuZGVkJywgJ2NvcnJlY3RlZCcgfQogICAgICBhbmQgTy5lZmZlY3RpdmUgaXMgbm90IG51bGwKICAgICAgYW5kIChPLmVmZmVjdGl2ZSBhcyBkYXRlVGltZSkgPj0gKE5vdygpIC0gU3lzdGVtLlF1YW50aXR5IHsgdmFsdWU6ICJBY3V0ZSBPYnNlcnZhdGlvbiBXaW5kb3cgSG91cnMiLCB1bml0OiAnaCcgfSkKCmRlZmluZSAiSGFzIEVsZXZhdGVkIFJlc3BpcmF0b3J5IFJhdGUiOgogIGV4aXN0cyAoCiAgICAiUmVjZW50IFJlc3BpcmF0b3J5IFJhdGUgT2JzZXJ2YXRpb25zIiBPCiAgICAgIHdoZXJlIChPLnZhbHVlIGFzIEZISVIuUXVhbnRpdHkpLnZhbHVlID4gMjUKICApCgpkZWZpbmUgIlJlc3BSYXRlTWV0IjoKICAiSGFzIEVsZXZhdGVkIFJlc3BpcmF0b3J5IFJhdGUiCgpkZWZpbmUgIlJlY2VudCBBcnRlcmlhbCBwQ08yIE9ic2VydmF0aW9ucyI6CiAgW09ic2VydmF0aW9uOiAiQXJ0ZXJpYWwgcENPMiJdIE8KICAgIHdoZXJlIE8uc3RhdHVzIGluIHsgJ2ZpbmFsJywgJ2FtZW5kZWQnLCAnY29ycmVjdGVkJyB9CiAgICAgIGFuZCBPLmVmZmVjdGl2ZSBpcyBub3QgbnVsbAogICAgICBhbmQgKE8uZWZmZWN0aXZlIGFzIGRhdGVUaW1lKSA+PSAoTm93KCkgLSBTeXN0ZW0uUXVhbnRpdHkgeyB2YWx1ZTogIkxhYiBSZXN1bHQgV2luZG93IEhvdXJzIiwgdW5pdDogJ2gnIH0pCgpkZWZpbmUgIkhhcyBIeXBlcmNhcG5pYSI6CiAgZXhpc3RzICgKICAgICJSZWNlbnQgQXJ0ZXJpYWwgcENPMiBPYnNlcnZhdGlvbnMiIE8KICAgICAgd2hlcmUgKE8udmFsdWUgYXMgRkhJUi5RdWFudGl0eSkudmFsdWUgPiA0NQogICkKCmRlZmluZSAiSHlwZXJjYXBuaWFNZXQiOgogICJIYXMgSHlwZXJjYXBuaWEiCgpkZWZpbmUgIlJlY2VudCBBcnRlcmlhbCBwSCBPYnNlcnZhdGlvbnMiOgogIFtPYnNlcnZhdGlvbjogIkFydGVyaWFsIGJsb29kIHBIIl0gTwogICAgd2hlcmUgTy5zdGF0dXMgaW4geyAnZmluYWwnLCAnYW1lbmRlZCcsICdjb3JyZWN0ZWQnIH0KICAgICAgYW5kIE8uZWZmZWN0aXZlIGlzIG5vdCBudWxsCiAgICAgIGFuZCAoTy5lZmZlY3RpdmUgYXMgZGF0ZVRpbWUpID49IChOb3coKSAtIFN5c3RlbS5RdWFudGl0eSB7IHZhbHVlOiAiTGFiIFJlc3VsdCBXaW5kb3cgSG91cnMiLCB1bml0OiAnaCcgfSkKCmRlZmluZSAiSGFzIFJlc3BpcmF0b3J5IEFjaWRvc2lzIjoKICBleGlzdHMgKAogICAgIlJlY2VudCBBcnRlcmlhbCBwSCBPYnNlcnZhdGlvbnMiIE8KICAgICAgd2hlcmUgKE8udmFsdWUgYXMgRkhJUi5RdWFudGl0eSkudmFsdWUgPCA3LjM1CiAgKQoKZGVmaW5lICJBY2lkb3Npc01ldCI6CiAgIkhhcyBSZXNwaXJhdG9yeSBBY2lkb3NpcyIKCmRlZmluZSAiVmVudGlsYXRvcnlGYWlsdXJlTWV0IjoKICAiSGFzIEVsZXZhdGVkIFJlc3BpcmF0b3J5IFJhdGUiCiAgICBvciAiSGFzIEh5cGVyY2FwbmlhIgogICAgb3IgIkhhcyBSZXNwaXJhdG9yeSBBY2lkb3NpcyIKCi8vCi8vIOKUgOKUgOKUgCBTRUNUSU9OIDU6IENMSU5JQ0FMIEVWSURFTkNFIChDT01QT1NJVEUpIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAovLwoKZGVmaW5lICJDbGluaWNhbEV2aWRlbmNlTWV0IjoKICAiSHlwb3hlbWlhTWV0IiBhbmQgIlZlbnRpbGF0b3J5RmFpbHVyZU1ldCIKCi8vCi8vIOKUgOKUgOKUgCBTRUNUSU9OIDY6IFRSRUFUTUVOVCBGQUlMVVJFIC8gTE9XRVItTEVWRUwgQ0FSRSDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKLy8KCmRlZmluZSAiVHJlYXRtZW50IEZhaWx1cmUgQ2xpbmljYWwgTm90ZXMiOgogIFtEb2N1bWVudFJlZmVyZW5jZV0gRAogICAgd2hlcmUgRC5zdGF0dXMgPSAnY3VycmVudCcKICAgICAgYW5kIEQuZG9jU3RhdHVzIGluIHsgJ2ZpbmFsJywgJ2FtZW5kZWQnIH0KICAgICAgYW5kIEQuZGF0ZSA+PSAoTm93KCkgLSBTeXN0ZW0uUXVhbnRpdHkgeyB2YWx1ZTogMzAsIHVuaXQ6ICdkJyB9KQogICAgICBhbmQgKAogICAgICAgIEQudHlwZS5jb2RpbmcuY29kZSBpbiB7ICczNDEwOS05JywgJzExNTA2LTMnLCAnMTg4NDItNScsICczNDExNy0yJyB9CiAgICAgICAgICBvciBELmNhdGVnb3J5LmNvZGluZy5jb2RlIGluIHsgJ2NsaW5pY2FsLW5vdGUnLCAncHJvZ3Jlc3Mtbm90ZScsICdkaXNjaGFyZ2Utc3VtbWFyeScgfQogICAgICApCgpkZWZpbmUgIkhhcyBUcmVhdG1lbnQgRmFpbHVyZSBEb2N1bWVudGF0aW9uIjoKICBleGlzdHMgKCJUcmVhdG1lbnQgRmFpbHVyZSBDbGluaWNhbCBOb3RlcyIpCgpkZWZpbmUgIlRyZWF0bWVudEZhaWx1cmVNZXQiOgogICJIYXMgVHJlYXRtZW50IEZhaWx1cmUgRG9jdW1lbnRhdGlvbiIKCi8vCi8vIOKUgOKUgOKUgCBTRUNUSU9OIDc6IElOUEFUSUVOVC1MRVZFTCBORUVEIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAovLwoKZGVmaW5lICJOb24tSW52YXNpdmUgVmVudGlsYXRpb24gUHJvY2VkdXJlIENvZGVzIjoKICB7ICc5NDY2MCcsICc5NDAwMicsICc5NDAwMycsICc5NDAwNScgfQoKZGVmaW5lICJJbnBhdGllbnQgTW9uaXRvcmluZyBQcm9jZWR1cmUgQ29kZXMiOgogIHsgJzk0NzYwJywgJzk0NzYxJywgJzk0NzYyJywgJzk5MjkxJywgJzk5MjkyJyB9CgpkZWZpbmUgIlJlY2VudCBOSVYgUHJvY2VkdXJlcyI6CiAgW1Byb2NlZHVyZV0gUAogICAgd2hlcmUgUC5zdGF0dXMgaW4geyAnaW4tcHJvZ3Jlc3MnLCAnY29tcGxldGVkJyB9CiAgICAgIGFuZCBQLmNvZGUuY29kaW5nLmNvZGUgaW4gIk5vbi1JbnZhc2l2ZSBWZW50aWxhdGlvbiBQcm9jZWR1cmUgQ29kZXMiCiAgICAgIGFuZCAoUC5wZXJmb3JtZWQgYXMgZGF0ZVRpbWUpID49IChOb3coKSAtIFN5c3RlbS5RdWFudGl0eSB7IHZhbHVlOiA0OCwgdW5pdDogJ2gnIH0pCgpkZWZpbmUgIlJlY2VudCBJbnBhdGllbnQgTW9uaXRvcmluZyBQcm9jZWR1cmVzIjoKICBbUHJvY2VkdXJlXSBQCiAgICB3aGVyZSBQLnN0YXR1cyBpbiB7ICdpbi1wcm9ncmVzcycsICdjb21wbGV0ZWQnIH0KICAgICAgYW5kIFAuY29kZS5jb2RpbmcuY29kZSBpbiAiSW5wYXRpZW50IE1vbml0b3JpbmcgUHJvY2VkdXJlIENvZGVzIgogICAgICBhbmQgKFAucGVyZm9ybWVkIGFzIGRhdGVUaW1lKSA+PSAoTm93KCkgLSBTeXN0ZW0uUXVhbnRpdHkgeyB2YWx1ZTogNDgsIHVuaXQ6ICdoJyB9KQoKZGVmaW5lICJPcmRlcmVkIE5JViBQcm9jZWR1cmVzIjoKICBbU2VydmljZVJlcXVlc3RdIFNSCiAgICB3aGVyZSBTUi5zdGF0dXMgaW4geyAnYWN0aXZlJywgJ2NvbXBsZXRlZCcgfQogICAgICBhbmQgU1IuaW50ZW50IGluIHsgJ29yZGVyJywgJ29yaWdpbmFsLW9yZGVyJywgJ2ZpbGxlci1vcmRlcicgfQogICAgICBhbmQgU1IuY29kZS5jb2RpbmcuY29kZSBpbiAiTm9uLUludmFzaXZlIFZlbnRpbGF0aW9uIFByb2NlZHVyZSBDb2RlcyIKICAgICAgYW5kIChTUi5hdXRob3JlZE9uKSA+PSAoTm93KCkgLSBTeXN0ZW0uUXVhbnRpdHkgeyB2YWx1ZTogNDgsIHVuaXQ6ICdoJyB9KQoKZGVmaW5lICJPcmRlcmVkIElucGF0aWVudCBNb25pdG9yaW5nIjoKICBbU2VydmljZVJlcXVlc3RdIFNSCiAgICB3aGVyZSBTUi5zdGF0dXMgaW4geyAnYWN0aXZlJywgJ2NvbXBsZXRlZCcgfQogICAgICBhbmQgU1IuaW50ZW50IGluIHsgJ29yZGVyJywgJ29yaWdpbmFsLW9yZGVyJywgJ2ZpbGxlci1vcmRlcicgfQogICAgICBhbmQgU1IuY29kZS5jb2RpbmcuY29kZSBpbiAiSW5wYXRpZW50IE1vbml0b3JpbmcgUHJvY2VkdXJlIENvZGVzIgogICAgICBhbmQgKFNSLmF1dGhvcmVkT24pID49IChOb3coKSAtIFN5c3RlbS5RdWFudGl0eSB7IHZhbHVlOiA0OCwgdW5pdDogJ2gnIH0pCgpkZWZpbmUgIkhhcyBJbnBhdGllbnQtTGV2ZWwgUHJvY2VkdXJlIG9yIE9yZGVyIjoKICBleGlzdHMgKCJSZWNlbnQgTklWIFByb2NlZHVyZXMiKQogICAgb3IgZXhpc3RzICgiUmVjZW50IElucGF0aWVudCBNb25pdG9yaW5nIFByb2NlZHVyZXMiKQogICAgb3IgZXhpc3RzICgiT3JkZXJlZCBOSVYgUHJvY2VkdXJlcyIpCiAgICBvciBleGlzdHMgKCJPcmRlcmVkIElucGF0aWVudCBNb25pdG9yaW5nIikKCmRlZmluZSAiSW5wYXRpZW50TmVlZE1ldCI6CiAgIkhhcyBJbnBhdGllbnQtTGV2ZWwgUHJvY2VkdXJlIG9yIE9yZGVyIgoKLy8KLy8g4pSA4pSA4pSAIFNFQ1RJT04gODogSU5ESVZJRFVBTCBDUklURVJJT04gU1VNTUFSWSBERUZJTkVTIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAovLwoKZGVmaW5lICJEaWFnbm9zaXNDcml0ZXJpb25NZXQiOgogICJEaWFnbm9zaXNNZXQiCgpkZWZpbmUgIkh5cG94aWFDcml0ZXJpb25NZXQiOgogICJIeXBveGVtaWFNZXQiCgpkZWZpbmUgIlZlbnRpbGF0b3J5Q3JpdGVyaW9uTWV0IjoKICAiVmVudGlsYXRvcnlGYWlsdXJlTWV0IgoKZGVmaW5lICJDbGluaWNhbEV2aWRlbmNlQ3JpdGVyaW9uTWV0IjoKICAiQ2xpbmljYWxFdmlkZW5jZU1ldCIKCmRlZmluZSAiVHJlYXRtZW50RmFpbHVyZUNyaXRlcmlvbk1ldCI6CiAgIlRyZWF0bWVudEZhaWx1cmVNZXQiCgpkZWZpbmUgIklucGF0aWVudE5lZWRDcml0ZXJpb25NZXQiOgogICJJbnBhdGllbnROZWVkTWV0IgoKZGVmaW5lICJDb3ZlcmFnZUNyaXRlcmlvbk1ldCI6CiAgIkNvdmVyYWdlTWV0IgoKLy8KLy8g4pSA4pSA4pSAIFNFQ1RJT04gOTogTUlTU0lORyBEQVRBIEZMQUdTIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAovLwoKZGVmaW5lICJNaXNzaW5nIFNwTzIgRGF0YSI6CiAgbm90IGV4aXN0cyAoIlJlY2VudCBTcE8yIE9ic2VydmF0aW9ucyIpCgpkZWZpbmUgIk1pc3NpbmcgcE8yIERhdGEiOgogIG5vdCBleGlzdHMgKCJSZWNlbnQgQXJ0ZXJpYWwgcE8yIE9ic2VydmF0aW9ucyIpCgpkZWZpbmUgIk1pc3NpbmcgSHlwb3hlbWlhIERhdGEiOgogICJNaXNzaW5nIFNwTzIgRGF0YSIgYW5kICJNaXNzaW5nIHBPMiBEYXRhIgoKZGVmaW5lICJNaXNzaW5nIFJlc3BpcmF0b3J5IFJhdGUgRGF0YSI6CiAgbm90IGV4aXN0cyAoIlJlY2VudCBSZXNwaXJhdG9yeSBSYXRlIE9ic2VydmF0aW9ucyIpCgpkZWZpbmUgIk1pc3NpbmcgcENPMiBEYXRhIjoKICBub3QgZXhpc3RzICgiUmVjZW50IEFydGVyaWFsIHBDTzIgT2JzZXJ2YXRpb25zIikKCmRlZmluZSAiTWlzc2luZyBwSCBEYXRhIjoKICBub3QgZXhpc3RzICgiUmVjZW50IEFydGVyaWFsIHBIIE9ic2VydmF0aW9ucyIpCgpkZWZpbmUgIk1pc3NpbmcgVmVudGlsYXRvcnkgRmFpbHVyZSBEYXRhIjoKICAiTWlzc2luZyBSZXNwaXJhdG9yeSBSYXRlIERhdGEiIGFuZCAiTWlzc2luZyBwQ08yIERhdGEiIGFuZCAiTWlzc2luZyBwSCBEYXRhIgoKZGVmaW5lICJNaXNzaW5nIENsaW5pY2FsIEV2aWRlbmNlIERhdGEiOgogICJNaXNzaW5nIEh5cG94ZW1pYSBEYXRhIiBvciAiTWlzc2luZyBWZW50aWxhdG9yeSBGYWlsdXJlIERhdGEiCgpkZWZpbmUgIk1pc3NpbmcgVHJlYXRtZW50IEZhaWx1cmUgRG9jdW1lbnRhdGlvbiI6CiAgbm90IGV4aXN0cyAoIlRyZWF0bWVudCBGYWlsdXJlIENsaW5pY2FsIE5vdGVzIikKCmRlZmluZSAiTWlzc2luZyBJbnBhdGllbnQgTmVlZCBEb2N1bWVudGF0aW9uIjoKICBub3QgZXhpc3RzICgiUmVjZW50IE5JViBQcm9jZWR1cmVzIikKICAgIGFuZCBub3QgZXhpc3RzICgiUmVjZW50IElucGF0aWVudCBNb25pdG9yaW5nIFByb2NlZHVyZXMiKQogICAgYW5kIG5vdCBleGlzdHMgKCJPcmRlcmVkIE5JViBQcm9jZWR1cmVzIikKICAgIGFuZCBub3QgZXhpc3RzICgiT3JkZXJlZCBJbnBhdGllbnQgTW9uaXRvcmluZyIpCgpkZWZpbmUgIk1pc3NpbmcgQ292ZXJhZ2UgRGF0YSI6CiAgbm90IGV4aXN0cyAoW0NvdmVyYWdlXSkKCi8vCi8vIOKUgOKUgOKUgCBTRUNUSU9OIDEwOiBDUklURVJJT04gRkFJTFVSRSBSRUFTT05TIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAovLwoKZGVmaW5lICJGYWlsZWQgQ292ZXJhZ2UgQ3JpdGVyaW9uIjoKICBub3QgIkNvdmVyYWdlTWV0IgoKZGVmaW5lICJGYWlsZWQgRGlhZ25vc2lzIENyaXRlcmlvbiI6CiAgbm90ICJEaWFnbm9zaXNNZXQiCgpkZWZpbmUgIkZhaWxlZCBIeXBveGVtaWEgQ3JpdGVyaW9uIjoKICBub3QgIkh5cG94ZW1pYU1ldCIKCmRlZmluZSAiRmFpbGVkIFZlbnRpbGF0b3J5IEZhaWx1cmUgQ3JpdGVyaW9uIjoKICBub3QgIlZlbnRpbGF0b3J5RmFpbHVyZU1ldCIKCmRlZmluZSAiRmFpbGVkIENsaW5pY2FsIEV2aWRlbmNlIENyaXRlcmlvbiI6CiAgbm90ICJDbGluaWNhbEU="
+    }
+  ]
+}
