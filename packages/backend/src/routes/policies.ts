@@ -15,19 +15,34 @@ const policyObjectSchema = {
   },
 };
 
+function parseJsonField<T>(value: unknown): T | null {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value) as T; } catch { return null; }
+  }
+  return value as T;
+}
+
 /** Serialize a raw DB policies row to camelCase for the frontend. */
 function serializePolicy(row: Record<string, unknown>): Record<string, unknown> {
   const d = (v: unknown) =>
     v instanceof Date ? v.toISOString().slice(0, 10) : (v ?? null);
+  const ts = (v: unknown) =>
+    v instanceof Date ? v.toISOString() : (typeof v === 'string' ? v : null);
   return {
     id: row['id'],
     policyType: row['policy_type'],
     cmsId: row['cms_id'] ?? null,
+    cmsDocumentId: row['cms_document_id'] ?? null,
     title: row['title'],
     status: row['status'],
     effectiveDate: d(row['effective_date']),
     retirementDate: d(row['retirement_date']),
     sourceUrl: row['source_url'] ?? null,
+    icd10Covered: parseJsonField(row['icd10_covered']),
+    icd10Noncovered: parseJsonField(row['icd10_noncovered']),
+    hcpcsCodes: parseJsonField(row['hcpcs_codes']),
+    lastSyncedAt: ts(row['last_synced_at']),
   };
 }
 

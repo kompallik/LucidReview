@@ -254,4 +254,131 @@ export default async function adminRoutes(app: FastifyInstance) {
       return reply.send({ jobStarted: true, message: 'CMS policy sync started in background' });
     },
   );
+
+  // POST /api/admin/policies/sync-status — sync retirements/new policies
+  app.post(
+    '/api/admin/policies/sync-status',
+    {
+      preHandler: [authenticate, requireRole(['ADMIN'])],
+      schema: {
+        tags: ['Admin'],
+        summary: 'Sync policy status',
+        description: 'Syncs policy retirements and new policies from CMS (fast, ~5 min).',
+        response: {
+          200: {
+            description: 'Job started',
+            type: 'object',
+            additionalProperties: true,
+            properties: {
+              jobId: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const { getPolicySyncQueue } = await import('../queue/policy-sync-queue.js');
+      const queue = getPolicySyncQueue();
+      const job = await queue.add('sync-status', { syncType: 'status', triggeredBy: 'admin' });
+      return reply.send({ jobId: job.id, message: 'Policy status sync started in background' });
+    },
+  );
+
+  // POST /api/admin/policies/enrich — enrich all policies with ICD-10 + HCPCS
+  app.post(
+    '/api/admin/policies/enrich',
+    {
+      preHandler: [authenticate, requireRole(['ADMIN'])],
+      schema: {
+        tags: ['Admin'],
+        summary: 'Enrich policies',
+        description: 'Enqueues enrichment jobs for all un-enriched policies (slow, ~30 min for 1065 policies).',
+        response: {
+          200: {
+            description: 'Jobs enqueued',
+            type: 'object',
+            additionalProperties: true,
+            properties: {
+              queued: { type: 'number' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const { queued } = await PolicyIngestionService.enqueueMissingEnrichment();
+      return reply.send({ queued, message: `Enqueued ${queued} enrichment jobs` });
+    },
+  );
+
+  // POST /api/admin/policies/full-sync — status + enrich
+  app.post(
+    '/api/admin/policies/full-sync',
+    {
+      preHandler: [authenticate, requireRole(['ADMIN'])],
+      schema: {
+        tags: ['Admin'],
+        summary: 'Full policy sync',
+        description: 'Triggers a full policy sync: status update + enrichment of changed policies.',
+        response: {
+          200: {
+            description: 'Job started',
+            type: 'object',
+            additionalProperties: true,
+            properties: {
+              jobId: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const { getPolicySyncQueue } = await import('../queue/policy-sync-queue.js');
+      const queue = getPolicySyncQueue();
+      const job = await queue.add('full-sync', { syncType: 'full', triggeredBy: 'admin' });
+      return reply.send({ jobId: job.id, message: 'Full policy sync started in background' });
+    },
+  );
+
+  // GET /api/admin/policies/sync-status — sync statistics
+  app.get(
+    '/api/admin/policies/sync-status',
+    {
+      preHandler: [authenticate, requireRole(['ADMIN'])],
+      schema: {
+        tags: ['Admin'],
+        summary: 'Sync statistics',
+        description: 'Returns policy sync statistics.',
+        response: {
+          200: {
+            description: 'Sync statistics',
+            type: 'object',
+            additionalProperties: true,
+            properties: {
+              lastSyncedAt: { type: 'string', nullable: true },
+              totalPolicies: { type: 'number' },
+              enrichedPolicies: { type: 'number' },
+              pendingEnrichment: { type: 'number' },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const [{ total }] = await db('policies').count('* as total');
+      const [{ enriched }] = await db('policies').whereNotNull('last_synced_at').count('* as enriched');
+      const [{ pending }] = await db('policies').whereNull('icd10_covered').count('* as pending');
+      const [{ maxSync }] = await db('policies').max('last_synced_at as maxSync');
+
+      return reply.send({
+        lastSyncedAt: maxSync ? new Date(maxSync as string).toISOString() : null,
+        totalPolicies: Number(total),
+        enrichedPolicies: Number(enriched),
+        pendingEnrichment: Number(pending),
+      });
+    },
+  );
 }

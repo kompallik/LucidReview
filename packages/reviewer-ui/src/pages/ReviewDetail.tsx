@@ -84,14 +84,14 @@ function PatientHeader({
 
 function NoAgentRun({ caseNumber, onStarted, onError }: {
   caseNumber: string;
-  onStarted: () => void;
+  onStarted: (runId: string) => void;
   onError: (msg: string) => void;
 }) {
   const runAgent = useRunAgent(caseNumber);
 
   const handleRun = () => {
     runAgent.mutate(undefined, {
-      onSuccess: () => onStarted(),
+      onSuccess: (data) => onStarted(data.runId),
       onError: (err) => onError(err.message),
     });
   };
@@ -149,6 +149,7 @@ export default function ReviewDetail() {
   const { caseNumber } = useParams<{ caseNumber: string }>();
   const { toast } = useToast();
   const [traceCollapsed, setTraceCollapsed] = useState(false);
+  const [startingRunId, setStartingRunId] = useState<string | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<{
     items: EvidenceItem[];
     description: string;
@@ -163,7 +164,7 @@ export default function ReviewDetail() {
   const decideReview = useDecideReview(caseNumber ?? '');
   const cancelRun = useCancelRun();
 
-  const isRunning = review?.latestRun?.status === 'running';
+  const isRunning = review?.latestRun?.status === 'running' || (!!startingRunId && !latestRun);
 
   // Poll review + trace while agent is running
   const pollFn = useCallback(() => {
@@ -227,12 +228,21 @@ export default function ReviewDetail() {
     <div className="flex flex-col h-full">
       <PatientHeader review={review} />
 
-      {!latestRun ? (
+      {!latestRun && !startingRunId ? (
         <NoAgentRun
           caseNumber={review.caseNumber}
-          onStarted={() => toast(`AI Review started for #${review.caseNumber}`, 'success')}
+          onStarted={(runId) => {
+            setStartingRunId(runId);
+            toast(`AI Review started for #${review.caseNumber}`, 'success');
+          }}
           onError={(msg) => toast(`Agent run failed: ${msg}`, 'error')}
         />
+      ) : !latestRun ? (
+        <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
+          <Loader2 size={28} className="animate-spin text-blue-500 mb-4" />
+          <p className="text-sm font-medium text-slate-700">Starting AI Review...</p>
+          <p className="text-xs text-slate-400 mt-1">Initializing agent. The trace will appear momentarily.</p>
+        </div>
       ) : (
         <div className="flex flex-1 overflow-hidden">
           {/* ─── Left Panel (60%) ─── */}

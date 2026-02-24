@@ -105,9 +105,23 @@ export interface Policy {
   id: string;
   policyType: string;
   cmsId?: string;
+  cmsDocumentId?: number;
   title: string;
   status: string;
   effectiveDate?: string;
+  retirementDate?: string;
+  sourceUrl?: string;
+  icd10Covered?: Array<{ code: string; description: string }>;
+  icd10Noncovered?: Array<{ code: string; description: string }>;
+  hcpcsCodes?: Array<{ code: string; description: string; modifier?: string }>;
+  lastSyncedAt?: string;
+}
+
+export interface PolicySyncStatus {
+  lastSyncedAt: string | null;
+  totalPolicies: number;
+  enrichedPolicies: number;
+  pendingEnrichment: number;
 }
 
 export interface HealthStatus {
@@ -177,6 +191,14 @@ export const api = {
   },
   policies: {
     list: () => apiFetch<Policy[]>('/api/policies'),
+    syncStatus: () =>
+      apiFetch<{ jobId: string; message: string }>('/api/admin/policies/sync-status', { method: 'POST' }),
+    enrich: () =>
+      apiFetch<{ queued: number; message: string }>('/api/admin/policies/enrich', { method: 'POST' }),
+    fullSync: () =>
+      apiFetch<{ jobId: string; message: string }>('/api/admin/policies/full-sync', { method: 'POST' }),
+    getSyncStatus: () =>
+      apiFetch<PolicySyncStatus>('/api/admin/policies/sync-status'),
   },
   health: {
     check: () => apiFetch<HealthStatus>('/api/health'),
