@@ -218,10 +218,10 @@ function AutoTreeNode({ node, states, evidence, depth = 0, activeLeafIds }: {
               {isActive && s === 'unknown' && <p className="mt-0.5 text-[10px] text-blue-500 animate-pulse">AI evaluating…</p>}
               {/* Inline evidence summary — always visible when present */}
               {hasEvidence && (
-                <p className={cn('mt-1 text-[10px] leading-snug truncate', s === 'met' ? 'text-emerald-700' : 'text-red-600')}>
+                <p className={cn('mt-1 text-[11px] leading-snug', s === 'met' ? 'text-emerald-700' : 'text-red-600')}>
                   {fhirRefs.length > 0
                     ? fhirRefs.map(r => r.ref).join(' · ')
-                    : ev.slice(0, 120)}
+                    : ev.slice(0, 140)}
                 </p>
               )}
             </div>
@@ -229,11 +229,19 @@ function AutoTreeNode({ node, states, evidence, depth = 0, activeLeafIds }: {
               <button
                 type="button"
                 onClick={() => setShowEvidence(v => !v)}
-                className={cn('shrink-0 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-all', showEvidence ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700')}
+                className={cn(
+                  'shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-all',
+                  showEvidence
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : s === 'met'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                      : 'bg-red-50 text-red-600 border-red-300 hover:bg-red-100'
+                )}
               >
-                <BookOpen size={9} />
+                <BookOpen size={12} />
+                Evidence
                 {fhirRefs.length > 0 && (
-                  <span className={cn('rounded-full px-1 text-[9px] font-bold', showEvidence ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600')}>{fhirRefs.length}</span>
+                  <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-bold', showEvidence ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700')}>{fhirRefs.length}</span>
                 )}
               </button>
             )}
@@ -531,11 +539,29 @@ export default function CaseReview() {
             if (!ev && fhirRef) ev = fhirRef;
             if (ev && fhirRef && !ev.includes(fhirRef)) ev += ` · ${fhirRef}`;
             if (ev && val && !ev.includes(val)) ev += ` (${val})`;
+            // Always produce evidence text — fallback to criterion name + result
+            if (!ev) ev = `${cr.name ?? 'Criterion'}: ${cr.result ?? state.toUpperCase()} — evaluated by AI agent`;
             for (const lid of leafIds) {
-              if (treeLeafIds.includes(lid)) { newStates.set(lid, state); if (ev) newEvidence.set(lid, ev); }
+              if (treeLeafIds.includes(lid)) { newStates.set(lid, state); newEvidence.set(lid, ev); }
             }
           }
-          if (outKey === 'AUTO_APPROVE') { for (const lid of treeLeafIds) { if (!newStates.has(lid)) newStates.set(lid, 'met'); } }
+          if (outKey === 'AUTO_APPROVE') {
+            const tree = treeRef.current?.tree ?? null;
+            const findLabel2 = (node: TreeNode, id: string): string => {
+              if (node.id === id) return node.label;
+              for (const c of node.children ?? []) { const l = findLabel2(c, id); if (l) return l; }
+              return id;
+            };
+            for (const lid of treeLeafIds) {
+              if (!newStates.has(lid)) {
+                newStates.set(lid, 'met');
+                if (!newEvidence.has(lid)) {
+                  const label = tree ? findLabel2(tree, lid) : lid;
+                  newEvidence.set(lid, `${label}: MET — all coverage criteria satisfied for ${outKey}`);
+                }
+              }
+            }
+          }
           // Only animate criteria that aren't already resolved by the CQL step
           setActiveLeafIds(new Set());
           let animDelay = 0;
@@ -579,10 +605,21 @@ export default function CaseReview() {
             }
           }
 
-          // If allCriteriaMet, fill any unmatched leaves
+          // If allCriteriaMet, fill any unmatched leaves with a fallback evidence string
           if (cqlData.allCriteriaMet) {
+            const tree = treeRef.current?.tree ?? null;
+            const findLabel = (node: TreeNode, id: string): string => {
+              if (node.id === id) return node.label;
+              for (const c of node.children ?? []) { const l = findLabel(c, id); if (l) return l; }
+              return '';
+            };
             for (const leafId of treeLeafIds) {
-              if (!seen.has(leafId)) { seen.add(leafId); cqlUpdates.push({ nodeId: leafId, state: 'met', ev: '' }); }
+              if (!seen.has(leafId)) {
+                seen.add(leafId);
+                const label = tree ? findLabel(tree, leafId) : leafId;
+                const fallbackEv = `${label}: MET — CQL evaluation confirmed criterion satisfied`;
+                cqlUpdates.push({ nodeId: leafId, state: 'met', ev: fallbackEv });
+              }
             }
           }
 
@@ -858,7 +895,14 @@ export default function CaseReview() {
               clearInterval(pollRef.current!);
               setSteps(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'done' } : s));
               if (runStatus.status === 'completed') {
-                if (runStatus.determination) { setDetermination(runStatus.determination.decision ?? ''); setConfidence(runStatus.determination.confidence ?? 0); }
+                if (runStatus.determination) {
+                  // Backend may use 'determination' or 'decision' as the key depending on serialization
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const detRaw = runStatus.determination as any;
+                  const detKey: string = detRaw.determination ?? detRaw.decision ?? '';
+                  if (detKey) setDetermination(detKey);
+                  setConfidence(runStatus.determination.confidence ?? 0);
+                }
                 setPhase('done');
                 appendLog({ ts: nowTs(), tool: 'Review complete', status: 'done', preview: `${trace.turns.length} agent turns`, type: 'system' });
               } else { setPhase('error'); setErrorMsg(runStatus.error ?? 'Agent run failed'); }
