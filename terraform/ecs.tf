@@ -405,11 +405,12 @@ resource "aws_ecs_service" "hapi_fhir" {
 
 # ── Backend API ───────────────────────────────────────────────────────────────
 resource "aws_ecs_service" "backend" {
-  name            = "${local.prefix}-backend"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = var.backend_desired_count
-  launch_type     = "FARGATE"
+  name                   = "${local.prefix}-backend"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.backend.arn
+  desired_count          = var.backend_desired_count
+  launch_type            = "FARGATE"
+  enable_execute_command = true  # allows `aws ecs execute-command` for one-off admin tasks
 
   network_configuration {
     subnets          = [var.private_subnet_a_id, var.private_subnet_b_id]

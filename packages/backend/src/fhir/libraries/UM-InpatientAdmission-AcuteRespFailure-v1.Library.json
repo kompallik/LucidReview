@@ -1,8 +1,8 @@
 {
   "resourceType": "Library",
-  "id": "UM_InpatientAdmission_AcuteRespFailure",
-  "url": "http://lucidreview.dev/Library/UM_InpatientAdmission_AcuteRespFailure",
-  "name": "UM_InpatientAdmission_AcuteRespFailure",
+  "id": "UM-InpatientAdmission-AcuteRespFailure",
+  "url": "http://lucidreview.dev/Library/UM-InpatientAdmission-AcuteRespFailure",
+  "name": "UM-InpatientAdmission-AcuteRespFailure",
   "title": "Acute Respiratory Failure Inpatient Admission Criteria",
   "version": "1.0.0",
   "status": "active",

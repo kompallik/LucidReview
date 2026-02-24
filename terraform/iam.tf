@@ -51,7 +51,29 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
   })
 }
 
-# ── Task Role – extend existing role with Textract (used by mcp-server) ───────
+# ── Task Role – SSM for ECS Exec + Textract for mcp-server ───────────────────
+# SSM is required to use `aws ecs execute-command` (ECS Exec).
+resource "aws_iam_role_policy" "task_ssm_exec" {
+  name = "LucidReviewSSMExec"
+  role = data.aws_iam_role.task_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "ECSExec"
+      Effect = "Allow"
+      Action = [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# ── Task Role – Textract (used by mcp-server) ─────────────────────────────────
 # The existing task role already has Bedrock permissions.
 # We attach an inline policy for Amazon Textract (PDF extraction in mcp-server).
 
