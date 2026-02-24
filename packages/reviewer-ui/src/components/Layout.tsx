@@ -1,7 +1,60 @@
+import { useState } from 'react';
 import { Outlet, NavLink, Navigate, useLocation, useNavigate } from 'react-router';
-import { ClipboardList, BookOpen, User, LogOut, SearchCheck, Stethoscope } from 'lucide-react';
+import { ClipboardList, BookOpen, User, LogOut, SearchCheck, Stethoscope, Info, X, Loader2 } from 'lucide-react';
 import { cn } from '../lib/cn.ts';
 import { isAuthenticated, getUser, logout } from '../pages/Login.tsx';
+
+const ABOUT_URL = 'https://kompallik.github.io/LucidReview/';
+
+function AboutModal({ onClose }: { onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex flex-col w-full max-w-6xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal header bar */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
+          <div className="flex items-center gap-2">
+            <Info size={15} className="text-blue-600" />
+            <span className="text-sm font-semibold text-slate-700">About LucidReview</span>
+            <span className="text-[11px] text-slate-400 font-mono ml-1">{ABOUT_URL}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* iframe */}
+        <div className="relative flex-1">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 size={24} className="animate-spin text-blue-500" />
+                <span className="text-sm text-slate-500">Loading…</span>
+              </div>
+            </div>
+          )}
+          <iframe
+            src={ABOUT_URL}
+            title="About LucidReview"
+            className="w-full h-full border-0"
+            onLoad={() => setLoading(false)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const NAV_ITEMS = [
   { to: '/reviews', label: 'Reviews', icon: ClipboardList },
@@ -32,6 +85,7 @@ function Breadcrumb() {
 export default function Layout() {
   const navigate = useNavigate();
   const user = getUser();
+  const [showAbout, setShowAbout] = useState(false);
 
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
@@ -104,8 +158,15 @@ export default function Layout() {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-12 items-center border-b border-slate-200 bg-white px-6">
+        <header className="flex h-12 items-center justify-between border-b border-slate-200 bg-white px-6">
           <Breadcrumb />
+          <button
+            onClick={() => setShowAbout(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-colors"
+          >
+            <Info size={13} />
+            About
+          </button>
         </header>
 
         {/* Page content */}
@@ -113,6 +174,8 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </div>
   );
 }
