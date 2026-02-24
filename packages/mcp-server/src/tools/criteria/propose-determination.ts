@@ -20,7 +20,7 @@ const criteriaResultSchema = z.object({
 const policyBasisSchema = z.object({
   policyId: z.union([z.string(), z.number()]),
   title: z.string(),
-  cmsId: z.string().optional(),
+  cmsId: z.string().nullish(),  // DB field is nullable; accept null, undefined, or string
 });
 
 export function registerProposeDetermination(server: McpServer) {

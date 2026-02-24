@@ -8,7 +8,7 @@ export const config = {
     baseUrl: process.env.HAPI_FHIR_URL ?? 'http://localhost:8080/fhir',
   },
   ctakes: {
-    url: process.env.CTAKES_URL ?? 'http://localhost:8081',
+    url: process.env.CTAKES_URL ?? 'http://localhost:8080',
   },
   database: {
     host: process.env.DB_HOST ?? 'localhost',
