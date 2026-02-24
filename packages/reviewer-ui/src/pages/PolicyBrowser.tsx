@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, BookOpen, Loader2 } from 'lucide-react';
+import { Search, BookOpen, Loader2, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePolicies } from '../api/hooks.ts';
 import { cn } from '../lib/cn.ts';
@@ -124,12 +124,15 @@ export default function PolicyBrowser() {
               <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-2.5">
                 Effective Date
               </th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-2.5">
+                Source
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center">
+                <td colSpan={6} className="px-4 py-12 text-center">
                   <Loader2 size={20} className="mx-auto animate-spin text-slate-400 mb-2" />
                   <span className="text-xs text-slate-500">Loading policies...</span>
                 </td>
@@ -159,11 +162,26 @@ export default function PolicyBrowser() {
                       ? format(new Date(policy.effectiveDate), 'MMM d, yyyy')
                       : '—'}
                   </td>
+                  <td className="px-4 py-2.5">
+                    {policy.cmsId ? (
+                      <a
+                        href={`https://www.cms.gov/search/cms?keys=${encodeURIComponent(policy.cmsId)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        CMS.gov
+                        <ExternalLink size={11} />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-300">—</span>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-xs text-slate-500">
+                <td colSpan={6} className="px-4 py-12 text-center text-xs text-slate-500">
                   No policies found
                 </td>
               </tr>
