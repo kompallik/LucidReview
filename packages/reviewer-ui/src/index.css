@@ -49,6 +49,20 @@
   animation: clinical-pulse 2s ease-in-out infinite;
 }
 
+/* ── Determination outcome card backgrounds ─────────────────────── */
+.outcome-approve {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+.outcome-md-review {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+.outcome-more-info {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+.outcome-deny {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
 /* Toast slide-in animation */
 @keyframes slide-in-right {
   from {

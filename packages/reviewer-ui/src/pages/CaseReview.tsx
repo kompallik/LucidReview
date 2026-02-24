@@ -96,20 +96,60 @@ function toolPreview(toolName: string, output: unknown): string {
   } catch { return ''; }
 }
 
-const KEYWORD_MAP: Array<[RegExp, string[]]> = [
-  [/coverage|benefit|medicare|insur/i, ['coverage']],
-  [/diagnos|icd|j96|respiratory fail/i, ['diagnosis']],
-  [/spo2|spO|oximeter|saturation/i, ['spo2']],
-  [/po2|pao2|partial.*oxygen/i, ['po2']],
-  [/resp.*rate|RR|tachypnea/i, ['resp_rate']],
-  [/pco2|paco2|hypercap/i, ['hypercapnia']],
-  [/ph|acidosis|acidem/i, ['acidosis']],
-  [/lower.level|outpatient.*fail/i, ['treatment_failure']],
-  [/inpatient.*monitor|bipap|cpap|ventil/i, ['inpatient_need']],
-  [/cql|automat|library/i, ['cql']],
-];
+// ─── Tree-aware criterion → leaf ID matching ──────────────────────────────────
+// Builds a map of normalized label/id → leaf node id from the actual tree.
+function buildLeafLabelMap(node: TreeNode, map = new Map<string, string>()): Map<string, string> {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (node.type === 'LEAF') {
+    map.set(norm(node.label), node.id);
+    map.set(norm(node.id), node.id);
+  }
+  for (const child of node.children ?? []) buildLeafLabelMap(child, map);
+  return map;
+}
 
-function mapCriterionToLeafIds(name: string): string[] {
+// Match a criterion name from a tool result to tree leaf IDs.
+// Priority: 1) direct criterionId  2) exact label  3) word-overlap  4) ARF keyword fallback
+function matchCriterion(
+  name: string,
+  criterionId: string | undefined,
+  treeLeafIds: string[],
+  labelMap: Map<string, string>,
+): string[] {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+  // 1. Direct ID match
+  if (criterionId && treeLeafIds.includes(criterionId)) return [criterionId];
+
+  // 2. Exact normalized label or id match
+  const normalizedName = norm(name);
+  const exactMatch = labelMap.get(normalizedName);
+  if (exactMatch) return [exactMatch];
+
+  // 3. Word-overlap: 2+ significant words (>3 chars) overlap between criterion name and leaf label
+  const nameWords = normalizedName.split(' ').filter(w => w.length > 3);
+  if (nameWords.length > 0) {
+    for (const [key, id] of labelMap) {
+      const keyWords = key.split(' ').filter(w => w.length > 3);
+      const overlap = nameWords.filter(nw =>
+        keyWords.some(kw => kw === nw || kw.startsWith(nw) || nw.startsWith(kw))
+      );
+      if (overlap.length >= Math.max(1, Math.min(2, nameWords.length - 1))) return [id];
+    }
+  }
+
+  // 4. Legacy ARF keyword fallback for known short names
+  const KEYWORD_MAP: Array<[RegExp, string[]]> = [
+    [/coverage|benefit|medicare|insur/i, ['coverage']],
+    [/diagnos|icd|j96|respiratory fail/i, ['diagnosis']],
+    [/spo2|spO|oximeter|saturation/i, ['spo2']],
+    [/po2|pao2|partial.*oxygen/i, ['po2']],
+    [/resp.*rate|RR|tachypnea/i, ['resp_rate']],
+    [/pco2|paco2|hypercap/i, ['hypercapnia']],
+    [/\bph\b|acidosis|acidem/i, ['acidosis']],
+    [/lower.level|outpatient.*fail/i, ['treatment_failure']],
+    [/inpatient.*monitor|bipap|cpap|ventil/i, ['inpatient_need']],
+  ];
   for (const [pattern, ids] of KEYWORD_MAP) { if (pattern.test(name)) return ids; }
   return [];
 }
@@ -458,7 +498,8 @@ export default function CaseReview() {
 
       const preview = toolPreview(toolName, output);
       appendLog({ ts: nowTs(), tool: toolName, status: 'done', preview, type: 'tool' });
-      markStep(toolName, 'done', preview);
+      // cql_evaluate_criteria: keep step as "running" until criteria animation finishes
+      if (toolName !== 'cql_evaluate_criteria') markStep(toolName, 'done', preview);
 
       if (toolName === 'propose_determination') {
         try {
@@ -478,16 +519,12 @@ export default function CaseReview() {
           const outKey = det.determination ?? '';
           setDetermination(outKey);
           setConfidence(det.confidence ?? 0);
+          const labelMap = treeRef.current ? buildLeafLabelMap(treeRef.current.tree) : new Map<string, string>();
           const newStates = new Map<string, CriterionState>();
           const newEvidence = new Map<string, string>();
           for (const cr of det.criteriaResults ?? []) {
-            // Try direct criterionId match first, then keyword fallback
-            const directId = cr.criterionId ?? '';
-            const leafIds = (directId && treeLeafIds.includes(directId))
-              ? [directId]
-              : mapCriterionToLeafIds(cr.name ?? '');
+            const leafIds = matchCriterion(cr.name ?? '', cr.criterionId, treeLeafIds, labelMap);
             const state: CriterionState = cr.result === 'MET' ? 'met' : cr.result === 'NOT_MET' ? 'not_met' : 'unknown';
-            // Compose evidence: prefer evidence field, enrich with fhirReference and value
             let ev = cr.evidence ?? '';
             const fhirRef = cr.fhirReference ?? '';
             const val = cr.value ?? '';
@@ -495,20 +532,17 @@ export default function CaseReview() {
             if (ev && fhirRef && !ev.includes(fhirRef)) ev += ` · ${fhirRef}`;
             if (ev && val && !ev.includes(val)) ev += ` (${val})`;
             for (const lid of leafIds) {
-              if (treeLeafIds.includes(lid)) {
-                newStates.set(lid, state);
-                if (ev) newEvidence.set(lid, ev);
-              }
+              if (treeLeafIds.includes(lid)) { newStates.set(lid, state); if (ev) newEvidence.set(lid, ev); }
             }
           }
           if (outKey === 'AUTO_APPROVE') { for (const lid of treeLeafIds) { if (!newStates.has(lid)) newStates.set(lid, 'met'); } }
-          // Stagger: update state AND evidence together in the same timeout per criterion
+          // Only animate criteria that aren't already resolved by the CQL step
           setActiveLeafIds(new Set());
           let animDelay = 0;
           for (const [nodeId, nodeState] of newStates) {
             const ev = newEvidence.get(nodeId) ?? '';
             setTimeout(() => {
-              setCriteriaStates(prev => { const n = new Map(prev); n.set(nodeId, nodeState); return n; });
+              setCriteriaStates(prev => { if (prev.get(nodeId) !== 'unknown' && prev.has(nodeId)) return prev; const n = new Map(prev); n.set(nodeId, nodeState); return n; });
               if (ev) setCriteriaEvidence(prev => { const n = new Map(prev); n.set(nodeId, ev); return n; });
             }, animDelay);
             animDelay += 200;
@@ -522,38 +556,21 @@ export default function CaseReview() {
             allCriteriaMet?: boolean;
             results?: Array<{ name?: string; criterionId?: string; result?: string; evidence?: string; fhirReference?: string; value?: string }>;
           };
+          const labelMap = treeRef.current ? buildLeafLabelMap(treeRef.current.tree) : new Map<string, string>();
 
-          // Build an ordered list of {nodeId, state, evidence} — no duplicates
+          // Build ordered list of {nodeId, state, evidence} — no duplicates
           const cqlUpdates: Array<{ nodeId: string; state: CriterionState; ev: string }> = [];
           const seen = new Set<string>();
 
           for (const r of (cqlData.results ?? [])) {
             const cqlState: CriterionState = r.result === 'MET' ? 'met' : r.result === 'NOT_MET' ? 'not_met' : 'unknown';
-            // Build evidence string from available fields
             let ev = r.evidence ?? '';
             const fhirRef = r.fhirReference ?? '';
             const val = r.value ?? '';
             if (!ev && fhirRef) ev = fhirRef;
             if (ev && fhirRef && !ev.includes(fhirRef)) ev += ` · ${fhirRef}`;
             if (ev && val && !ev.includes(val)) ev += ` (${val})`;
-
-            // Try direct criterionId match first, then keyword fallback
-            const directId = r.criterionId ?? '';
-            const candidates: string[] = [];
-            if (directId && treeLeafIds.includes(directId)) {
-              candidates.push(directId);
-            } else {
-              const kw = (r.name ?? '').toLowerCase();
-              if (kw.includes('spo2') || kw.includes('oxygen') || kw.includes('saturation')) candidates.push('spo2');
-              if (kw.includes('po2') || kw.includes('pao2')) candidates.push('po2');
-              if (kw.includes('resp') || kw.includes(' rr') || kw.includes('tachypnea')) candidates.push('resp_rate');
-              if (kw.includes('pco2') || kw.includes('paco2') || kw.includes('hypercap')) candidates.push('hypercapnia');
-              if (kw.includes(' ph') || kw.includes('acidosis') || kw.includes('acidem')) candidates.push('acidosis');
-              if (kw.includes('diagnos') || kw.includes('icd')) candidates.push('diagnosis');
-              if (kw.includes('coverage') || kw.includes('benefit') || kw.includes('medicare')) candidates.push('coverage');
-              if (kw.includes('treatment') || kw.includes('lower level') || kw.includes('outpatient fail')) candidates.push('treatment_failure');
-              if (kw.includes('inpatient') || kw.includes('bipap') || kw.includes('ventil')) candidates.push('inpatient_need');
-            }
+            const candidates = matchCriterion(r.name ?? '', r.criterionId, treeLeafIds, labelMap);
             for (const nodeId of candidates) {
               if (treeLeafIds.includes(nodeId) && !seen.has(nodeId)) {
                 seen.add(nodeId);
@@ -562,17 +579,17 @@ export default function CaseReview() {
             }
           }
 
-          // If allCriteriaMet, ensure every unmatched leaf is also queued as met
+          // If allCriteriaMet, fill any unmatched leaves
           if (cqlData.allCriteriaMet) {
             for (const leafId of treeLeafIds) {
-              if (!seen.has(leafId)) {
-                seen.add(leafId);
-                cqlUpdates.push({ nodeId: leafId, state: 'met', ev: '' });
-              }
+              if (!seen.has(leafId)) { seen.add(leafId); cqlUpdates.push({ nodeId: leafId, state: 'met', ev: '' }); }
             }
           }
 
-          // Animate each criterion one at a time: flash active → commit state + evidence
+          // Mark step running while animation plays, then done after last item
+          markStep('cql_evaluate_criteria', 'running', preview);
+          const PER_ITEM = 500; // ms between each criterion
+          const FLASH_MS = 700; // active flash duration
           let cqlDelay = 0;
           for (const { nodeId, state: nodeState, ev } of cqlUpdates) {
             setTimeout(() => {
@@ -581,11 +598,16 @@ export default function CaseReview() {
                 setCriteriaStates(prev => { const n = new Map(prev); n.set(nodeId, nodeState); return n; });
                 if (ev) setCriteriaEvidence(prev => { const n = new Map(prev); n.set(nodeId, ev); return n; });
                 setActiveLeafIds(prev => { const n = new Set(prev); n.delete(nodeId); return n; });
-              }, 700);
+              }, FLASH_MS);
             }, cqlDelay);
-            cqlDelay += 500;
+            cqlDelay += PER_ITEM;
           }
-        } catch { /* ignore */ }
+          // Mark step done after all animations complete
+          const totalDuration = cqlDelay + FLASH_MS + 200;
+          setTimeout(() => markStep('cql_evaluate_criteria', 'done', preview), totalDuration);
+        } catch {
+          markStep('cql_evaluate_criteria', 'done', preview);
+        }
       }
       if (toolName === 'um_get_member_coverage') {
         // Flash coverage node active, then mark it met
