@@ -216,35 +216,31 @@ function AutoTreeNode({ node, states, evidence, depth = 0, activeLeafIds }: {
                 </span>
               )}
               {isActive && s === 'unknown' && <p className="mt-0.5 text-[10px] text-blue-500 animate-pulse">AI evaluating…</p>}
-              {/* Inline evidence summary — always visible when present */}
+              {/* Evidence toggle button — full-width row inside the criterion body */}
               {hasEvidence && (
-                <p className={cn('mt-1 text-[11px] leading-snug', s === 'met' ? 'text-emerald-700' : 'text-red-600')}>
-                  {fhirRefs.length > 0
-                    ? fhirRefs.map(r => r.ref).join(' · ')
-                    : ev.slice(0, 140)}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowEvidence(v => !v)}
+                  className={cn(
+                    'mt-2 w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 border transition-all text-left',
+                    showEvidence
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : s === 'met'
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100'
+                        : 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
+                  )}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <BookOpen size={13} />
+                    <span className="text-[11px] font-semibold">Evidence</span>
+                    {fhirRefs.length > 0 && (
+                      <span className={cn('rounded-full px-1.5 text-[9px] font-bold', showEvidence ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700')}>{fhirRefs.length} FHIR</span>
+                    )}
+                  </div>
+                  <ChevronDown size={12} className={cn('transition-transform', showEvidence && 'rotate-180')} />
+                </button>
               )}
             </div>
-            {hasEvidence && (
-              <button
-                type="button"
-                onClick={() => setShowEvidence(v => !v)}
-                className={cn(
-                  'shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-all',
-                  showEvidence
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                    : s === 'met'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
-                      : 'bg-red-50 text-red-600 border-red-300 hover:bg-red-100'
-                )}
-              >
-                <BookOpen size={12} />
-                Evidence
-                {fhirRefs.length > 0 && (
-                  <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-bold', showEvidence ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700')}>{fhirRefs.length}</span>
-                )}
-              </button>
-            )}
           </div>
           {hasEvidence && showEvidence && (
             <div className={cn('mx-3 mb-2.5 rounded-lg border p-3 text-xs animate-fade-in', s === 'met' ? 'border-emerald-200 bg-emerald-50/80' : 'border-red-200 bg-red-50/80')}>
@@ -1317,9 +1313,9 @@ export default function CaseReview() {
         <div className="flex-1 overflow-y-auto bg-slate-50 scrollbar-thin">
           <div className="p-5 space-y-4">
 
-            {/* ── Determination outcome card ── */}
+            {/* ── Determination outcome card — sticky so it stays visible while scrolling through criteria ── */}
             {determination && outcomeConfig ? (
-              <div className={cn('rounded-2xl p-5 text-white shadow-lg animate-fade-up', outcomeConfig.cssClass)}>
+              <div className={cn('rounded-2xl p-5 text-white shadow-lg sticky top-0 z-10', outcomeConfig.cssClass)}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="mb-1 flex items-center gap-2">
