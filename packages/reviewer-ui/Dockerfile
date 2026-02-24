@@ -1,6 +1,12 @@
 # ─── Stage 1: Build ────────────────────────────────────────────────────────────
 FROM node:22-slim AS build
 
+# VITE_API_URL is baked into the JS bundle at build time.
+# Pass the production domain at build time:
+#   docker build --build-arg VITE_API_URL=https://lucidreview.mhkdevsandbox.com ...
+ARG VITE_API_URL=https://lucidreview.mhkdevsandbox.com
+ENV VITE_API_URL=${VITE_API_URL}
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
