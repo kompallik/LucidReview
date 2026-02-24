@@ -177,13 +177,8 @@ resource "aws_ecs_task_definition" "hapi_fhir" {
         }
       }
 
-      healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8080/fhir/metadata || exit 1"]
-        interval    = 30
-        timeout     = 10
-        retries     = 5
-        startPeriod = 120 # HAPI FHIR takes ~90s to fully start
-      }
+      # No container health check — hapiproject/hapi is distroless (no shell, no curl).
+      # ECS monitors the container's running state (exit code) instead.
     }
   ])
 }
