@@ -1,368 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LucidReview — AI-Powered Prior Authorization</title>
-<meta name="description" content="LucidReview automates utilization management prior authorization with Claude AI on AWS Bedrock — combining FHIR R4, NLP, and CQL-driven criteria evaluation to reach accurate determinations in seconds." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LucidReview — Prior Auth, Reimagined by MHK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ═══════════════════════════════════════════════════════
-   DESIGN TOKENS
-═══════════════════════════════════════════════════════ */
-:root {
-  --bg0: #06090f;
-  --bg1: #0b1120;
-  --bg2: #111827;
-  --glass: rgba(11,17,32,0.72);
-  --bd0: rgba(255,255,255,0.05);
-  --bd1: rgba(255,255,255,0.11);
-  --bd2: rgba(255,255,255,0.18);
-  --cyan: #00d4f5;
-  --cyan2: rgba(0,212,245,0.15);
-  --cyan3: rgba(0,212,245,0.08);
-  --mint: #00e5a0;
-  --mint2: rgba(0,229,160,0.14);
-  --mint3: rgba(0,229,160,0.07);
-  --amber: #f5a623;
-  --red: #f56342;
-  --violet: #8b5cf6;
-  --t1: #eef2ff;
-  --t2: #8899b4;
-  --t3: #4a5568;
-  --fd: 'Sora', sans-serif;
-  --fs: 'DM Serif Display', serif;
-  --fb: 'Plus Jakarta Sans', sans-serif;
-  --fm: 'JetBrains Mono', monospace;
-  --r1: 6px; --r2: 12px; --r3: 20px; --r4: 32px;
+:root{
+  --bg0:#06090f;--bg1:#0b1120;--bg2:#111827;--bg3:#0d1929;
+  --glass:rgba(11,17,32,.72);
+  --bd0:rgba(255,255,255,.05);--bd1:rgba(255,255,255,.11);--bd2:rgba(255,255,255,.18);
+  --cyan:#00d4f5;--cyan2:rgba(0,212,245,.15);--cyan3:rgba(0,212,245,.08);
+  --mint:#00e5a0;--mint2:rgba(0,229,160,.14);--mint3:rgba(0,229,160,.07);
+  --amber:#f5a623;--amberD:rgba(245,166,35,.12);
+  --red:#f56342;--redD:rgba(245,99,66,.1);
+  --violet:#8b5cf6;--violetD:rgba(139,92,246,.1);
+  --t1:#eef2ff;--t2:#8899b4;--t3:#4a5568;
+  --fd:'Sora',sans-serif;--fs:'DM Serif Display',serif;
+  --fb:'Plus Jakarta Sans',sans-serif;--fm:'JetBrains Mono',monospace;
+  --r1:6px;--r2:12px;--r3:20px;--r4:32px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{background:var(--bg0);color:var(--t1);font-family:var(--fb);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-
-/* ─── Canvas bg ─── */
 #bgc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3}
 .pc{position:relative;z-index:1}
-
-/* ─── Layout ─── */
-.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.wrap{max-width:1160px;margin:0 auto;padding:0 28px}
 .divider{height:1px;background:linear-gradient(90deg,transparent,var(--bd1),transparent)}
-
-/* ─── Typography ─── */
-h1,h2,h3{font-family:var(--fd);line-height:1.12;letter-spacing:-0.02em}
-.serif{font-family:var(--fs);font-style:italic;font-weight:400}
+h1,h2,h3,h4{font-family:var(--fd);letter-spacing:-.02em;line-height:1.12}
+.si{font-family:var(--fs);font-style:italic;font-weight:400}
 .grad{background:linear-gradient(130deg,var(--cyan) 0%,var(--mint) 55%,#6be8ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-
-/* ─── Tags / pills ─── */
-.tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--fm);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 11px;border-radius:100px;border:1px solid}
+.tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--fm);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 12px;border-radius:100px;border:1px solid}
 .tc{color:var(--cyan);border-color:rgba(0,212,245,.28);background:var(--cyan3)}
 .tm{color:var(--mint);border-color:rgba(0,229,160,.28);background:var(--mint3)}
-.ta{color:var(--amber);border-color:rgba(245,166,35,.28);background:rgba(245,166,35,.08)}
-.code-tag{font-family:var(--fm);font-size:10px;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--bd0);color:var(--t3)}
-.sec-label{font-family:var(--fm);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
-
-/* ─── Buttons ─── */
-.btn-p{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;background:linear-gradient(135deg,var(--cyan),var(--mint));color:#06090f;font-weight:700;font-size:14.5px;border-radius:100px;text-decoration:none;transition:opacity .2s,transform .2s,box-shadow .2s;box-shadow:0 4px 24px rgba(0,212,245,.22)}
+.ta{color:var(--amber);border-color:rgba(245,166,35,.28);background:var(--amberD)}
+.tr{color:var(--red);border-color:rgba(245,99,66,.28);background:var(--redD)}
+.sec-label{font-family:var(--fm);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+.btn-p{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,var(--cyan),var(--mint));color:#06090f;font-weight:700;font-size:14.5px;border-radius:100px;text-decoration:none;transition:opacity .2s,transform .2s,box-shadow .2s;box-shadow:0 4px 24px rgba(0,212,245,.22);border:none;cursor:pointer;font-family:var(--fd)}
 .btn-p:hover{opacity:.9;transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,212,245,.32)}
-.btn-s{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;color:var(--t1);font-weight:600;font-size:14.5px;border-radius:100px;text-decoration:none;border:1px solid var(--bd1);transition:background .2s,border-color .2s;background:rgba(255,255,255,.04)}
+.btn-s{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;color:var(--t1);font-weight:600;font-size:14.5px;border-radius:100px;text-decoration:none;border:1px solid var(--bd1);transition:background .2s,border-color .2s;background:rgba(255,255,255,.04);font-family:var(--fd)}
 .btn-s:hover{background:rgba(255,255,255,.08);border-color:var(--bd2)}
-
-/* ─── Reveal animation ─── */
 .rv{opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
 .rv.vis{opacity:1;transform:none}
-.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}
+.d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}.d4{transition-delay:.32s}.d5{transition-delay:.4s}.d6{transition-delay:.48s}
 
-/* ═══════════════════════════════════════════════════════
-   NAV
-═══════════════════════════════════════════════════════ */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:15px 0;transition:background .3s,border-color .3s}
-nav.sc{background:rgba(6,9,15,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd0)}
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 0;transition:background .3s,border-color .3s}
+nav.sc{background:rgba(6,9,15,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd0)}
 .ni{display:flex;align-items:center;justify-content:space-between}
 .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
-.lm{width:32px;height:32px;background:linear-gradient(135deg,var(--cyan),var(--mint));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:13px;color:#06090f;flex-shrink:0}
-.lt{font-family:var(--fd);font-weight:700;font-size:18px;color:var(--t1)}
-.nl{display:flex;align-items:center;gap:28px;list-style:none}
-.nl a{text-decoration:none;color:var(--t2);font-size:14px;font-weight:500;transition:color .2s}
+.lm{width:32px;height:32px;background:linear-gradient(135deg,var(--cyan),var(--mint));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:12px;color:#06090f;flex-shrink:0}
+.lt{font-family:var(--fd);font-weight:700;font-size:17px}
+.lt span{color:var(--t3);font-weight:400;font-size:13px;margin-left:6px}
+.nl{display:flex;align-items:center;gap:26px;list-style:none}
+.nl a{text-decoration:none;color:var(--t2);font-size:13.5px;font-weight:500;transition:color .2s}
 .nl a:hover{color:var(--t1)}
-.nc-cta{display:inline-flex;align-items:center;gap:7px;padding:8px 18px;background:linear-gradient(135deg,var(--cyan),var(--mint));color:#06090f;font-weight:700;font-size:13px;border-radius:100px;text-decoration:none;transition:opacity .2s,transform .2s}
+.nc-cta{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;background:linear-gradient(135deg,var(--cyan),var(--mint));color:#06090f;font-weight:700;font-size:13px;border-radius:100px;text-decoration:none;transition:opacity .2s,transform .2s;border:none;cursor:pointer;font-family:var(--fd)}
 .nc-cta:hover{opacity:.9;transform:translateY(-1px)}
 
-/* ═══════════════════════════════════════════════════════
-   HERO
-═══════════════════════════════════════════════════════ */
-.hero{min-height:100vh;display:flex;align-items:center;padding:120px 0 80px;position:relative}
-.hg{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.heyebrow{display:flex;gap:8px;margin-bottom:26px}
-.hhead{font-size:clamp(40px,5vw,62px);font-weight:800;margin-bottom:22px}
-.hhead .si{font-family:var(--fs);font-style:italic;font-weight:400;background:linear-gradient(130deg,var(--cyan),var(--mint));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hsub{font-size:17px;color:var(--t2);line-height:1.75;margin-bottom:38px;max-width:510px;font-weight:300}
-.ha{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:44px}
-.htrust{display:flex;align-items:center;gap:16px;font-size:12.5px;color:var(--t3);flex-wrap:wrap}
-.htrust span{color:var(--t2)}
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;padding:130px 0 80px;position:relative;overflow:hidden}
+.hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:900px;height:700px;background:radial-gradient(ellipse,rgba(0,212,245,.08) 0%,transparent 65%);pointer-events:none}
+.hero-inner{max-width:900px;margin:0 auto;text-align:center}
+.hero-eyebrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:28px}
+.hero-head{font-size:clamp(42px,6vw,72px);font-weight:800;margin-bottom:10px;line-height:1.08}
+.hero-serif{display:block;font-family:var(--fs);font-style:italic;font-weight:400;font-size:clamp(36px,5.5vw,66px);line-height:1.1}
+.hero-sub{font-size:18px;color:var(--t2);line-height:1.78;margin:22px auto 42px;max-width:640px;font-weight:300}
+.hero-acts{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:64px}
+.hero-trust{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--t3)}
+.hero-trust span{color:var(--t2)}
+.hero-trust .dot{width:3px;height:3px;border-radius:50%;background:var(--t3)}
 
-/* Hero pipeline card */
-.hv{position:relative}
-.pc-wrap{background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--bd0);border-radius:var(--r3);padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 48px rgba(0,212,245,.1);position:relative;overflow:hidden}
-.pc-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 0%,rgba(0,212,245,.07),transparent 60%);pointer-events:none}
-.pc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--bd0)}
-.pc-title{font-family:var(--fm);font-size:11.5px;color:var(--t2)}
-.pc-badge{display:flex;align-items:center;gap:5px;font-family:var(--fm);font-size:10px;color:var(--mint);padding:3px 9px;background:var(--mint3);border-radius:100px;border:1px solid rgba(0,229,160,.2)}
-.pdot{width:6px;height:6px;background:var(--mint);border-radius:50%;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
-.psteps{display:flex;flex-direction:column;gap:8px}
-.sr{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r1);background:rgba(255,255,255,.02);border:1px solid transparent;transition:all .3s}
-.sr.active{background:rgba(0,212,245,.06);border-color:rgba(0,212,245,.18)}
-.sr.done{background:rgba(0,229,160,.04);border-color:rgba(0,229,160,.1)}
-.si2{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
-.sinfo{flex:1}
-.sname{font-size:11.5px;font-weight:600;color:var(--t1);font-family:var(--fm)}
-.sdet{font-size:10px;color:var(--t3);margin-top:1px}
-.ss{font-family:var(--fm);font-size:9.5px;padding:3px 7px;border-radius:100px}
-.ss.d{color:var(--mint);background:var(--mint3)}
-.ss.a{color:var(--cyan);background:var(--cyan3);animation:flk 1.5s infinite}
-.ss.p{color:var(--t3);background:rgba(255,255,255,.04)}
-@keyframes flk{0%,100%{opacity:1}50%{opacity:.55}}
-.detbox{margin-top:14px;padding:12px 14px;background:linear-gradient(135deg,rgba(0,229,160,.08),rgba(0,212,245,.05));border:1px solid rgba(0,229,160,.22);border-radius:var(--r2);display:flex;align-items:center;justify-content:space-between;transition:opacity .8s ease}
-.dl{font-family:var(--fm);font-size:10px;color:var(--t3)}
-.dv{font-family:var(--fd);font-size:13px;font-weight:700;color:var(--mint)}
-.dc{font-family:var(--fm);font-size:11px;color:var(--t2)}
-
-/* Floating cards */
-.fc{position:absolute;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--bd0);border-radius:var(--r2);padding:11px 14px;font-size:11.5px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-.fc.top{top:-26px;right:-18px;animation:fl2 6s ease-in-out infinite}
-.fc.bot{bottom:-22px;left:-18px;animation:fl2 6s ease-in-out infinite 2s}
-@keyframes fl2{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-.fcl{font-family:var(--fm);font-size:9px;color:var(--t3);margin-bottom:3px}
-.fcv{font-weight:700;color:var(--t1)}
-.fcs{color:var(--t2);font-size:10px}
-
-/* ═══════════════════════════════════════════════════════
-   STATS
-═══════════════════════════════════════════════════════ */
-.stats-bar{padding:28px 0;border-top:1px solid var(--bd0);border-bottom:1px solid var(--bd0);background:linear-gradient(90deg,transparent,rgba(0,212,245,.025),transparent)}
-.sg{display:grid;grid-template-columns:repeat(4,1fr)}
-.si3{text-align:center;padding:6px 16px;border-right:1px solid var(--bd0)}
+/* ── STATS ── */
+.stats-bar{padding:26px 0;border-top:1px solid var(--bd0);border-bottom:1px solid var(--bd0);background:linear-gradient(90deg,transparent,rgba(0,212,245,.025),transparent)}
+.sg{display:grid;grid-template-columns:repeat(5,1fr)}
+.si3{text-align:center;padding:6px 14px;border-right:1px solid var(--bd0)}
 .si3:last-child{border-right:none}
-.snum{font-family:var(--fd);font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1;margin-bottom:5px}
-.slab{font-size:13px;color:var(--t2);font-weight:400}
+.snum{font-family:var(--fd);font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1;margin-bottom:4px}
+.slab{font-size:12px;color:var(--t2);font-weight:400;line-height:1.4}
 
-/* ═══════════════════════════════════════════════════════
-   SECTIONS
-═══════════════════════════════════════════════════════ */
-.sec{padding:92px 0}
+/* ── SEC ── */
+.sec{padding:96px 0}
 .sec-dark{background:linear-gradient(180deg,var(--bg0) 0%,var(--bg1) 50%,var(--bg0) 100%)}
 .sec-surf{background:var(--bg1);border-top:1px solid var(--bd0);border-bottom:1px solid var(--bd0)}
+.sec-deep{background:var(--bg3);border-top:1px solid var(--bd0);border-bottom:1px solid var(--bd0)}
 .sh{text-align:center;margin-bottom:60px}
-.stitle{font-size:clamp(30px,3.5vw,46px);font-weight:800;margin-bottom:14px}
-.ssub{font-size:17px;color:var(--t2);font-weight:300;max-width:580px;margin:0 auto;line-height:1.75}
+.stitle{font-size:clamp(30px,3.8vw,48px);font-weight:800;margin-bottom:14px}
+.ssub{font-size:17px;color:var(--t2);font-weight:300;max-width:600px;margin:0 auto;line-height:1.78}
 
-/* ═══════════════════════════════════════════════════════
-   PROBLEM
-═══════════════════════════════════════════════════════ */
-.prob-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
-.pstats{display:flex;flex-direction:column;gap:18px}
-.pcard{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r2);padding:22px;position:relative;overflow:hidden}
-.pcard::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--red)}
-.pcard.warn::after{background:var(--amber)}
-.pnum{font-family:var(--fd);font-size:40px;font-weight:800;letter-spacing:-.02em;color:var(--red);line-height:1}
-.pnum.w{color:var(--amber)}
-.pdesc{font-size:13px;color:var(--t2);margin-top:5px}
-.ptxt h3{font-size:27px;font-weight:700;margin-bottom:14px}
-.ptxt p{color:var(--t2);font-size:15px;line-height:1.78;margin-bottom:14px;font-weight:300}
-.pbullets{list-style:none;display:flex;flex-direction:column;gap:11px;margin-top:22px}
-.pbullets li{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--t2)}
-.bico{width:18px;height:18px;border-radius:50%;background:var(--mint3);border:1px solid rgba(0,229,160,.25);display:flex;align-items:center;justify-content:center;color:var(--mint);font-size:9px;flex-shrink:0;margin-top:1px}
+/* ── MANIFESTO SECTION ── */
+.manifesto-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--bd0);border:1px solid var(--bd0);border-radius:var(--r4);overflow:hidden}
+.mf-cell{background:var(--bg0);padding:36px 40px;position:relative;overflow:hidden;transition:background .3s}
+.mf-cell:hover{background:var(--bg2)}
+.mf-cell::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none}
+.mf-cell:hover::before{opacity:1}
+.mf-cell.c-cyan::before{background:radial-gradient(ellipse at 0% 0%,rgba(0,212,245,.07),transparent 60%)}
+.mf-cell.c-mint::before{background:radial-gradient(ellipse at 100% 0%,rgba(0,229,160,.07),transparent 60%)}
+.mf-cell.c-amber::before{background:radial-gradient(ellipse at 0% 100%,rgba(245,166,35,.07),transparent 60%)}
+.mf-cell.c-violet::before{background:radial-gradient(ellipse at 100% 100%,rgba(139,92,246,.07),transparent 60%)}
+.mf-num{font-family:var(--fm);font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:16px}
+.mf-cell.c-cyan .mf-num{color:var(--cyan)}
+.mf-cell.c-mint .mf-num{color:var(--mint)}
+.mf-cell.c-amber .mf-num{color:var(--amber)}
+.mf-cell.c-violet .mf-num{color:var(--violet)}
+.mf-title{font-size:20px;font-weight:700;margin-bottom:10px;font-family:var(--fd)}
+.mf-body{font-size:14px;color:var(--t2);line-height:1.7;font-weight:300}
+.mf-stat{font-family:var(--fd);font-size:36px;font-weight:800;margin-top:14px;line-height:1}
+.mf-cell.c-cyan .mf-stat{color:var(--cyan)}
+.mf-cell.c-mint .mf-stat{color:var(--mint)}
+.mf-cell.c-amber .mf-stat{color:var(--amber)}
+.mf-cell.c-violet .mf-stat{color:var(--violet)}
 
-/* ═══════════════════════════════════════════════════════
-   PIPELINE / HOW IT WORKS
-═══════════════════════════════════════════════════════ */
-.wf-wrap{position:relative;max-width:780px;margin:0 auto;padding:32px 0}
-.wf-wrap::before{content:'';position:absolute;left:27px;top:20px;bottom:20px;width:1px;background:linear-gradient(180deg,rgba(0,212,245,.5),rgba(0,229,160,.4),transparent)}
-.wf-step{display:grid;grid-template-columns:56px 1fr;gap:22px;align-items:flex-start;padding:14px 0}
-.wfn{width:56px;height:56px;border-radius:var(--r2);border:1px solid var(--bd1);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:17px;color:var(--cyan);flex-shrink:0;position:relative;z-index:1;transition:background .3s,border-color .3s}
-.wf-step:hover .wfn{background:var(--cyan3);border-color:var(--cyan)}
-.wfb{padding:6px 0}
-.wft{font-size:16px;font-weight:700;margin-bottom:6px;font-family:var(--fd)}
-.wfd{font-size:14px;color:var(--t2);line-height:1.68;font-weight:300;margin-bottom:9px}
-.wftags{display:flex;gap:5px;flex-wrap:wrap}
+/* ── WHY NOW ── */
+.forces-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:48px}
+.force-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:28px;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+.force-card:hover{border-color:var(--bd1);transform:translateY(-4px)}
+.force-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none}
+.force-card:hover::before{opacity:1;background:radial-gradient(ellipse at 50% 0%,rgba(0,212,245,.06),transparent 65%)}
+.force-num{font-family:var(--fm);font-size:48px;font-weight:500;line-height:1;margin-bottom:16px;opacity:.12}
+.force-card:nth-child(1) .force-num{color:var(--cyan)}
+.force-card:nth-child(2) .force-num{color:var(--amber)}
+.force-card:nth-child(3) .force-num{color:var(--mint)}
+.force-icon{font-size:28px;margin-bottom:14px}
+.force-title{font-size:17px;font-weight:700;margin-bottom:8px;font-family:var(--fd)}
+.force-body{font-size:13.5px;color:var(--t2);line-height:1.7;font-weight:300}
+.force-tags{margin-top:14px;display:flex;gap:5px;flex-wrap:wrap}
+.conv-banner{background:linear-gradient(135deg,rgba(0,212,245,.08),rgba(0,229,160,.06));border:1px solid rgba(0,212,245,.2);border-radius:var(--r3);padding:24px 32px;text-align:center}
+.conv-text{font-size:17px;font-weight:600;font-family:var(--fd);margin-bottom:4px}
+.conv-sub{font-size:14px;color:var(--t2);font-weight:300}
 
-/* ═══════════════════════════════════════════════════════
-   FEATURES
-═══════════════════════════════════════════════════════ */
-.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.fcard{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:26px;transition:border-color .3s,background .3s,transform .3s;position:relative;overflow:hidden}
-.fcard::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;background:radial-gradient(ellipse at 50% 0%,rgba(0,212,245,.07),transparent 65%);pointer-events:none}
-.fcard:hover{border-color:rgba(0,212,245,.22);background:var(--bg2);transform:translateY(-4px)}
-.fcard:hover::before{opacity:1}
-.fico{width:42px;height:42px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:18px}
-.ftitle{font-size:16px;font-weight:700;margin-bottom:9px;font-family:var(--fd)}
-.fdesc{font-size:13.5px;color:var(--t2);line-height:1.68;font-weight:300}
-.ffoot{margin-top:14px;padding-top:14px;border-top:1px solid var(--bd0);display:flex;gap:5px;flex-wrap:wrap}
+/* ── WHY MHK ── */
+.mhk-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:64px;align-items:center}
+.mhk-pillars{display:flex;flex-direction:column;gap:20px}
+.pillar{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r2);padding:20px 24px;display:flex;gap:16px;align-items:flex-start;transition:border-color .3s}
+.pillar:hover{border-color:var(--bd1)}
+.pillar-ico{width:40px;height:40px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.pillar-body h4{font-size:15px;font-weight:700;margin-bottom:4px;font-family:var(--fd)}
+.pillar-body p{font-size:13px;color:var(--t2);line-height:1.6;font-weight:300}
+.mhk-statement{position:relative}
+.mhk-quote{font-family:var(--fs);font-size:clamp(22px,3vw,34px);font-style:italic;line-height:1.35;color:var(--t1);margin-bottom:24px}
+.mhk-quote em{font-style:normal;color:var(--cyan)}
+.mhk-clients{display:flex;align-items:center;gap:16px;padding:18px 22px;background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r2);margin-bottom:16px}
+.mc-num{font-family:var(--fd);font-size:42px;font-weight:800;color:var(--mint);line-height:1}
+.mc-label{font-size:13.5px;color:var(--t2);line-height:1.5}
+.mc-label strong{display:block;color:var(--t1);font-size:15px;margin-bottom:2px}
+.mhk-note{font-size:13px;color:var(--t3);line-height:1.6;font-style:italic}
 
-/* ═══════════════════════════════════════════════════════
-   ARCHITECTURE
-═══════════════════════════════════════════════════════ */
-.arch-box-wrap{background:var(--bg0);border:1px solid var(--bd0);border-radius:var(--r4);padding:36px;position:relative;overflow:hidden}
-.arch-box-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,212,245,.04),transparent 65%);pointer-events:none}
-.arch-rows{display:flex;flex-direction:column;gap:28px;position:relative;z-index:1}
-.arch-rl{font-family:var(--fm);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
-.arch-ri{display:flex;gap:10px;flex-wrap:wrap}
-.arch-b{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:12px 16px;flex:1;min-width:130px;transition:border-color .2s,background .2s}
-.arch-b:hover{border-color:var(--bd1);background:rgba(255,255,255,.05)}
-.arch-b.ac{border-color:rgba(0,212,245,.22);background:rgba(0,212,245,.05)}
-.arch-b.am{border-color:rgba(0,229,160,.22);background:rgba(0,229,160,.05)}
-.arch-b.av{border-color:rgba(139,92,246,.22);background:rgba(139,92,246,.05)}
-.arch-bico{font-size:18px;margin-bottom:6px}
-.arch-bname{font-size:12.5px;font-weight:700;font-family:var(--fd)}
-.arch-bdet{font-size:10px;color:var(--t3);margin-top:2px;font-family:var(--fm)}
-.arch-arr{display:flex;justify-content:center;color:var(--t3);font-size:18px;margin:-10px 0}
+/* ── WORKFORCE CRISIS ── */
+.crisis-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-bottom:36px}
+.crisis-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:26px;position:relative;overflow:hidden}
+.crisis-card::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%;border-radius:var(--r1) 0 0 var(--r1)}
+.crisis-card.red::after{background:var(--red)}
+.crisis-card.amber::after{background:var(--amber)}
+.crisis-stat{font-family:var(--fd);font-size:44px;font-weight:800;letter-spacing:-.02em;line-height:1;margin-bottom:8px}
+.crisis-card.red .crisis-stat{color:var(--red)}
+.crisis-card.amber .crisis-stat{color:var(--amber)}
+.crisis-label{font-size:15px;font-weight:600;margin-bottom:8px;font-family:var(--fd)}
+.crisis-body{font-size:13.5px;color:var(--t2);line-height:1.65;font-weight:300}
+.solution-strip{background:linear-gradient(135deg,rgba(0,229,160,.07),rgba(0,212,245,.05));border:1px solid rgba(0,229,160,.2);border-radius:var(--r3);padding:28px 36px;display:flex;align-items:center;gap:32px}
+.sol-icon{font-size:36px;flex-shrink:0}
+.sol-title{font-size:18px;font-weight:700;font-family:var(--fd);margin-bottom:6px}
+.sol-body{font-size:14px;color:var(--t2);line-height:1.65;font-weight:300}
+.sol-body strong{color:var(--mint)}
 
-/* ═══════════════════════════════════════════════════════
-   CLINICAL STANDARDS
-═══════════════════════════════════════════════════════ */
-.std-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
-.std-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:26px;display:flex;gap:18px;align-items:flex-start;transition:border-color .3s}
-.std-card:hover{border-color:var(--bd1)}
-.std-ico{width:46px;height:46px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.std-body h3{font-size:16px;font-weight:700;margin-bottom:7px}
-.std-body p{font-size:13px;color:var(--t2);line-height:1.65;font-weight:300}
-.std-codes{display:flex;gap:5px;flex-wrap:wrap;margin-top:11px}
+/* ── STAKEHOLDER PANEL ── */
+.stk-tabs{display:flex;gap:4px;margin-bottom:36px;background:var(--bg2);border:1px solid var(--bd0);border-radius:100px;padding:4px;width:fit-content;margin-left:auto;margin-right:auto;flex-wrap:wrap;justify-content:center}
+.stk-tab{font-family:var(--fm);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 18px;border-radius:100px;border:none;background:transparent;color:var(--t3);cursor:pointer;transition:all .2s;white-space:nowrap}
+.stk-tab.active{background:linear-gradient(135deg,var(--cyan),var(--mint));color:#06090f;font-weight:700}
+.stk-panel{display:none}
+.stk-panel.active{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.stk-left h3{font-size:clamp(24px,3vw,32px);font-weight:800;margin-bottom:14px;font-family:var(--fd)}
+.stk-left .stk-role{font-family:var(--fm);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:16px}
+.stk-left p{font-size:15px;color:var(--t2);line-height:1.75;font-weight:300;margin-bottom:14px}
+.stk-pains{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.stk-pain{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--t2)}
+.sp-ico{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px}
+.stk-right{display:flex;flex-direction:column;gap:14px}
+.stk-kpi{background:var(--bg0);border:1px solid var(--bd0);border-radius:var(--r2);padding:18px 20px;position:relative;overflow:hidden;transition:border-color .3s}
+.stk-kpi:hover{border-color:var(--bd1)}
+.kpi-val{font-family:var(--fd);font-size:28px;font-weight:800;line-height:1;margin-bottom:4px}
+.kpi-label{font-size:12.5px;color:var(--t2);line-height:1.5}
+.kpi-note{font-family:var(--fm);font-size:10px;color:var(--t3);margin-top:6px}
 
-/* ═══════════════════════════════════════════════════════
-   DETERMINATION OUTCOMES
-═══════════════════════════════════════════════════════ */
-.det-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.det-card{border-radius:var(--r3);padding:22px;border:1px solid;transition:transform .3s}
-.det-card:hover{transform:translateY(-3px)}
-.det-card.ap{background:rgba(0,229,160,.06);border-color:rgba(0,229,160,.24)}
-.det-card.rv{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.24)}
-.det-card.mi{background:rgba(0,212,245,.06);border-color:rgba(0,212,245,.24)}
-.det-card.dn{background:rgba(245,99,66,.06);border-color:rgba(245,99,66,.24)}
-.det-ico{font-size:26px;margin-bottom:11px}
-.det-name{font-size:13px;font-weight:700;font-family:var(--fm);margin-bottom:7px}
-.det-card.ap .det-name{color:var(--mint)}
-.det-card.rv .det-name{color:var(--amber)}
-.det-card.mi .det-name{color:var(--cyan)}
-.det-card.dn .det-name{color:var(--red)}
-.det-rule{font-size:12.5px;color:var(--t2);line-height:1.6;font-weight:300}
-.det-conf{font-family:var(--fm);font-size:10px;color:var(--t3);margin-top:10px}
+/* ── PLATFORM DIVIDEND ── */
+.dividend-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px}
+.div-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:26px;transition:border-color .3s,transform .3s}
+.div-card:hover{border-color:rgba(139,92,246,.3);transform:translateY(-3px)}
+.div-ico{font-size:28px;margin-bottom:14px}
+.div-title{font-size:16px;font-weight:700;font-family:var(--fd);margin-bottom:8px}
+.div-body{font-size:13.5px;color:var(--t2);line-height:1.68;font-weight:300}
+.div-foot{margin-top:12px;padding-top:12px;border-top:1px solid var(--bd0);display:flex;gap:5px;flex-wrap:wrap}
+.code-tag{font-family:var(--fm);font-size:10px;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--bd0);color:var(--t3)}
+.div-flow{background:linear-gradient(135deg,var(--violetD),rgba(0,212,245,.06));border:1px solid rgba(139,92,246,.2);border-radius:var(--r3);padding:22px 28px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.flow-item{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:500}
+.flow-dot{width:8px;height:8px;border-radius:50%;background:var(--violet);flex-shrink:0}
+.flow-arrow{color:var(--t3);font-size:16px;flex-shrink:0}
 
-/* ═══════════════════════════════════════════════════════
-   UI MOCKUP
-═══════════════════════════════════════════════════════ */
-.mockup{background:var(--bg0);border:1px solid var(--bd0);border-radius:var(--r4);overflow:hidden;box-shadow:0 48px 96px rgba(0,0,0,.65)}
-.mb-bar{background:var(--bg1);padding:11px 18px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--bd0)}
-.mb-dot{width:10px;height:10px;border-radius:50%}
-.mb-url{background:rgba(255,255,255,.04);border:1px solid var(--bd0);border-radius:5px;padding:3px 11px;font-family:var(--fm);font-size:10.5px;color:var(--t3);margin-left:6px;flex:1;max-width:300px}
-.mb-body{display:grid;grid-template-columns:220px 1fr 280px;min-height:420px}
-.mb-sidebar{background:var(--bg1);border-right:1px solid var(--bd0);padding:18px 14px}
-.mb-slogo{display:flex;align-items:center;gap:8px;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--bd0)}
-.mb-slm{width:22px;height:22px;background:linear-gradient(135deg,var(--cyan),var(--mint));border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#06090f}
-.mb-slt{font-size:13px;font-weight:700}
-.mb-nav{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--r1);font-size:11.5px;color:var(--t2);margin-bottom:3px}
-.mb-nav.act{background:var(--cyan3);color:var(--cyan)}
-.mb-main{padding:18px;overflow:hidden}
-.mb-ch{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
-.mb-cid{font-family:var(--fm);font-size:10.5px;color:var(--t3)}
-.mb-cdx{font-size:14px;font-weight:700;margin-top:2px}
-.mb-sbadge{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:100px;background:var(--cyan3);color:var(--cyan);border:1px solid rgba(0,212,245,.24)}
-.mb-trace{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:13px;margin-bottom:12px}
-.mb-ttitle{font-size:10.5px;font-family:var(--fm);color:var(--t3);margin-bottom:9px}
-.tr-row{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:10.5px;border-bottom:1px solid var(--bd0)}
-.tr-row:last-child{border-bottom:none}
-.trd{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.trd.d{background:var(--mint)}
-.trd.a{background:var(--cyan);animation:pulse 1.5s infinite}
-.trd.p{background:var(--t3)}
-.trn{flex:1;color:var(--t2)}
-.trl{font-family:var(--fm);font-size:9.5px;color:var(--t3)}
-.mb-crit{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:13px}
-.mb-ctitle{font-size:10.5px;font-family:var(--fm);color:var(--t3);margin-bottom:9px}
-.cr-row{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:10.5px;border-bottom:1px solid var(--bd0)}
-.cr-row:last-child{border-bottom:none}
-.crck{width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8.5px;flex-shrink:0}
-.crck.met{background:var(--mint3);color:var(--mint);border:1px solid rgba(0,229,160,.28)}
-.crck.unmet{background:rgba(245,99,66,.1);color:var(--red);border:1px solid rgba(245,99,66,.28)}
-.crck.unk{background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.28)}
-.crtxt{flex:1;color:var(--t2)}
-.crev{font-family:var(--fm);font-size:9px;color:var(--cyan)}
-.mb-right{border-left:1px solid var(--bd0);padding:18px;display:flex;flex-direction:column;gap:13px}
-.mb-pc{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:13px}
-.mb-pt{font-size:10.5px;font-family:var(--fm);color:var(--t3);margin-bottom:9px}
-.pr-row{display:flex;justify-content:space-between;font-size:10.5px;padding:3.5px 0;border-bottom:1px solid var(--bd0)}
-.pr-row:last-child{border-bottom:none}
-.prk{color:var(--t3)}
-.prv{color:var(--t2);font-weight:500}
-.mb-det{background:linear-gradient(135deg,rgba(0,229,160,.09),rgba(0,212,245,.06));border:1px solid rgba(0,229,160,.24);border-radius:var(--r2);padding:14px;text-align:center;margin-top:auto}
-.mb-dl{font-size:9.5px;font-family:var(--fm);color:var(--t3);margin-bottom:7px}
-.mb-dv{font-size:17px;font-weight:800;color:var(--mint);font-family:var(--fd)}
-.mb-dc{font-size:10.5px;color:var(--t2);margin-top:3px;font-family:var(--fm)}
-.mb-dbtn{margin-top:11px;width:100%;padding:8px;background:var(--mint);color:#06090f;font-weight:700;font-size:11.5px;border-radius:7px;border:none;font-family:var(--fd);cursor:default}
+/* ── ROI ── */
+.roi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:40px}
+.roi-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:26px;text-align:center;transition:border-color .3s}
+.roi-card:hover{border-color:var(--bd1)}
+.roi-val{font-family:var(--fd);font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1;margin-bottom:6px}
+.roi-title{font-size:14px;font-weight:600;font-family:var(--fd);margin-bottom:6px}
+.roi-body{font-size:13px;color:var(--t2);line-height:1.6;font-weight:300}
+.inaction-box{background:linear-gradient(135deg,rgba(245,99,66,.08),rgba(245,166,35,.06));border:1px solid rgba(245,99,66,.22);border-radius:var(--r3);padding:32px 36px}
+.inaction-title{font-size:22px;font-weight:800;font-family:var(--fd);margin-bottom:20px}
+.inaction-title span{color:var(--red)}
+.inaction-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.ia-item{display:flex;align-items:flex-start;gap:12px;font-size:14px;color:var(--t2)}
+.ia-ico{color:var(--red);font-size:16px;flex-shrink:0;margin-top:2px}
 
-/* ═══════════════════════════════════════════════════════
-   SECURITY
-═══════════════════════════════════════════════════════ */
-.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.comp-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:22px;text-align:center;transition:border-color .3s}
-.comp-card:hover{border-color:var(--bd1)}
-.comp-ico{font-size:30px;margin-bottom:11px}
-.comp-title{font-size:15px;font-weight:700;margin-bottom:7px}
-.comp-desc{font-size:13px;color:var(--t2);line-height:1.65;font-weight:300}
+/* ── FUTURE / MANIFESTO ── */
+.future-inner{text-align:center;max-width:800px;margin:0 auto}
+.future-head{font-size:clamp(32px,4.5vw,58px);font-weight:800;line-height:1.1;margin-bottom:20px}
+.future-serif{font-family:var(--fs);font-style:italic;display:block}
+.future-body{font-size:17px;color:var(--t2);line-height:1.8;font-weight:300;margin-bottom:36px;max-width:620px;margin-left:auto;margin-right:auto}
+.evolution-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--bd0);border-radius:var(--r3);overflow:hidden;margin:44px 0;border:1px solid var(--bd0)}
+.ev-step{background:var(--bg0);padding:28px;text-align:center;position:relative;overflow:hidden}
+.ev-step::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none}
+.ev-step:hover::before{opacity:1;background:radial-gradient(ellipse at 50% 0%,rgba(0,212,245,.07),transparent 65%)}
+.ev-era{font-family:var(--fm);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+.ev-title{font-size:18px;font-weight:700;font-family:var(--fd);margin-bottom:8px}
+.ev-body{font-size:13px;color:var(--t2);line-height:1.6}
+.ev-step.active-era{background:var(--bg1)}
+.ev-step.active-era .ev-era{color:var(--cyan)}
+.ev-step.active-era .ev-title{color:var(--t1)}
+.ev-arrow{display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:20px}
 
-/* ═══════════════════════════════════════════════════════
-   TECH STACK
-═══════════════════════════════════════════════════════ */
-.stack-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.sk-pill{display:flex;align-items:center;gap:7px;padding:9px 16px;background:var(--bg1);border:1px solid var(--bd0);border-radius:100px;font-size:12.5px;font-weight:500;transition:border-color .2s,background .2s}
-.sk-pill:hover{border-color:var(--bd1);background:var(--bg2)}
-.sk-ico{font-size:15px}
-
-/* ═══════════════════════════════════════════════════════
-   CTA
-═══════════════════════════════════════════════════════ */
-.cta-sec{padding:112px 0;text-align:center;position:relative;overflow:hidden}
+/* ── CTA ── */
+.cta-sec{padding:120px 0;text-align:center;position:relative;overflow:hidden}
 .cta-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,212,245,.09),transparent 70%);pointer-events:none}
-.cta-sec h2{font-size:clamp(34px,5vw,54px);font-weight:800;margin-bottom:18px}
-.cta-sec p{font-size:17px;color:var(--t2);font-weight:300;max-width:500px;margin:0 auto 36px;line-height:1.75}
-.cta-acts{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.cta-sec h2{font-size:clamp(34px,5vw,56px);font-weight:800;margin-bottom:18px;position:relative}
+.cta-sec p{font-size:17px;color:var(--t2);font-weight:300;max-width:520px;margin:0 auto 36px;line-height:1.75;position:relative}
+.cta-acts{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative;margin-bottom:22px}
+.cta-note{font-family:var(--fm);font-size:11px;color:var(--t3);letter-spacing:.06em;position:relative}
 
-/* ═══════════════════════════════════════════════════════
-   FOOTER
-═══════════════════════════════════════════════════════ */
-footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
-.fi{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
-.flogo{display:flex;align-items:center;gap:9px}
+/* Footer */
+footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:40px 0}
+.fi{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
 .flm{width:26px;height:26px;background:linear-gradient(135deg,var(--cyan),var(--mint));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#06090f}
+.flogo{display:flex;align-items:center;gap:8px}
 .flt{font-size:15px;font-weight:700}
-.flinks{display:flex;gap:22px}
-.flinks a{text-decoration:none;color:var(--t3);font-size:13px;transition:color .2s}
-.flinks a:hover{color:var(--t2)}
 .fcopy{font-size:11.5px;color:var(--t3)}
 
-/* ═══════════════════════════════════════════════════════
-   RESPONSIVE
-═══════════════════════════════════════════════════════ */
+/* Pulse animation */
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+.pdot{width:7px;height:7px;background:var(--mint);border-radius:50%;animation:pulse 2s infinite;display:inline-block}
+
 @media(max-width:1024px){
-  .hg{grid-template-columns:1fr;gap:44px}
-  .hv{display:none}
-  .fgrid{grid-template-columns:repeat(2,1fr)}
-  .det-grid{grid-template-columns:repeat(2,1fr)}
-  .mb-body{grid-template-columns:1fr}
-  .mb-sidebar,.mb-right{display:none}
-  .std-grid{grid-template-columns:1fr}
-  .comp-grid{grid-template-columns:repeat(2,1fr)}
+  .mhk-grid,.stk-panel.active,.dividend-grid,.inaction-grid{grid-template-columns:1fr}
+  .manifesto-grid,.crisis-grid,.forces-grid,.roi-grid,.evolution-steps{grid-template-columns:1fr 1fr}
 }
 @media(max-width:768px){
-  .fgrid{grid-template-columns:1fr}
-  .prob-grid{grid-template-columns:1fr}
-  .arch-ri{flex-direction:column}
+  .manifesto-grid,.crisis-grid,.forces-grid,.roi-grid,.evolution-steps{grid-template-columns:1fr}
   .sg{grid-template-columns:repeat(2,1fr)}
-  .det-grid{grid-template-columns:1fr}
-  .comp-grid{grid-template-columns:1fr}
   .nl{display:none}
   .sec{padding:64px 0}
+  .solution-strip{flex-direction:column;gap:14px}
 }
 </style>
 </head>
@@ -372,322 +268,178 @@ footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
 
 <div class="pc">
 
-<!-- ─── NAV ─── -->
+<!-- NAV -->
 <nav id="mn">
   <div class="wrap">
     <div class="ni">
-      <a href="#" class="logo">
+      <a href="index.html" class="logo">
         <div class="lm">LR</div>
-        <span class="lt">LucidReview</span>
+        <div><span class="lt">LucidReview <span>by MHK</span></span></div>
       </a>
       <ul class="nl">
-        <li><a href="#how-it-works">How It Works</a></li>
-        <li><a href="#features">Features</a></li>
-        <li><a href="#architecture">Architecture</a></li>
-        <li><a href="#clinical">Clinical Standards</a></li>
-        <li><a href="#security">Security</a></li>
+        <li><a href="#why-now">Why Now</a></li>
+        <li><a href="#why-mhk">Why MHK</a></li>
+        <li><a href="#workforce">Workforce</a></li>
+        <li><a href="#stakeholders">By Role</a></li>
+        <li><a href="#roi">ROI</a></li>
+        <li><a href="#future">The Future</a></li>
       </ul>
-      <a href="https://lucidreview.mhkdevsandbox.com/" class="nc-cta" target="_blank" rel="noopener">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-        Live Demo
-      </a>
+      <button class="nc-cta" onclick="document.getElementById('cta').scrollIntoView({behavior:'smooth'})">Start the Conversation</button>
     </div>
   </div>
 </nav>
 
-<!-- ─── HERO ─── -->
+<!-- HERO -->
 <section class="hero">
+  <div class="hero-glow"></div>
   <div class="wrap">
-    <div class="hg">
-      <div>
-        <div class="heyebrow">
-          <span class="tag tc">✦ Utilization Management AI</span>
-          <span class="tag tm">HIPAA-Ready</span>
-        </div>
-        <h1 class="hhead">
-          Prior Authorization,<br>
-          <span class="si">Reimagined</span><br>
-          with Clinical AI
-        </h1>
-        <p class="hsub">LucidReview automates insurance coverage reviews using Claude AI on AWS Bedrock — combining FHIR&nbsp;R4 clinical data, NLP evidence extraction, and CQL-driven criteria evaluation to reach accurate determinations in seconds, not days.</p>
-        <div class="ha">
-          <a href="https://lucidreview.mhkdevsandbox.com/" class="btn-p" target="_blank" rel="noopener">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-            Try It Live
-          </a>
-          <a href="#how-it-works" class="btn-s">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.5 8.5l-5 3a.5.5 0 01-.75-.43V5a.5.5 0 01.75-.43l5 3a.5.5 0 010 .86z"/></svg>
-            See How It Works
-          </a>
-          <a href="https://github.com/kkompalli/LucidReview" class="btn-s" target="_blank" rel="noopener">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            GitHub
-          </a>
-        </div>
-        <div class="htrust">
-          <span>Built on</span>
-          <span>Claude Sonnet 4.6 · AWS Bedrock</span>
-          <span>·</span><span>FHIR R4</span>
-          <span>·</span><span>CQL 1.5</span>
-          <span>·</span><span>TypeScript</span>
-        </div>
+    <div class="hero-inner">
+      <div class="hero-eyebrow">
+        <span class="tag tc">&#10022; MHK Innovation</span>
+        <span class="tag tm">Prior Auth Reimagined</span>
+        <span class="tag ta">AI-First Platform</span>
       </div>
-
-      <!-- Hero pipeline visual -->
-      <div class="hv">
-        <div class="fc top">
-          <div class="fcl">Policy Matched</div>
-          <div class="fcv">NCD 240.0</div>
-          <div class="fcs">Oxygen Therapy · 8 criteria</div>
-        </div>
-
-        <div class="pc-wrap">
-          <div class="pc-hdr">
-            <span class="pc-title">Agent Run · ARF-2026-001</span>
-            <div class="pc-badge"><div class="pdot"></div>Processing</div>
-          </div>
-          <div class="psteps" id="psteps">
-            <div class="sr done"><div class="si2" style="background:var(--cyan3)">🔍</div><div class="sinfo"><div class="sname">fetch_case_data</div><div class="sdet">J96.00 · INPATIENT · URGENT</div></div><span class="ss d">DONE</span></div>
-            <div class="sr done"><div class="si2" style="background:var(--cyan3)">📄</div><div class="sinfo"><div class="sname">extract_clinical_docs</div><div class="sdet">3 PDFs · AWS Textract</div></div><span class="ss d">DONE</span></div>
-            <div class="sr done"><div class="si2" style="background:rgba(245,166,35,.1)">🧠</div><div class="sinfo"><div class="sname">run_nlp_extraction</div><div class="sdet">SpO₂ 87% · PaO₂ 55 mmHg</div></div><span class="ss d">DONE</span></div>
-            <div class="sr done"><div class="si2" style="background:var(--mint3)">⚕️</div><div class="sinfo"><div class="sname">normalize_to_fhir</div><div class="sdet">Bundle · 12 resources</div></div><span class="ss d">DONE</span></div>
-            <div class="sr active"><div class="si2" style="background:var(--cyan3)">📋</div><div class="sinfo"><div class="sname">evaluate_cql_criteria</div><div class="sdet">NCD 240.0 · 8 criteria</div></div><span class="ss a">RUNNING</span></div>
-            <div class="sr"><div class="si2" style="background:rgba(255,255,255,.03)">⚖️</div><div class="sinfo"><div class="sname">propose_determination</div><div class="sdet">Pending CQL results</div></div><span class="ss p">PENDING</span></div>
-          </div>
-          <div class="detbox" id="detbox" style="opacity:.35">
-            <div><div class="dl">Determination</div><div class="dv">AUTO_APPROVE</div></div>
-            <div class="dc">Confidence: 95%</div>
-          </div>
-        </div>
-
-        <div class="fc bot">
-          <div class="fcl">FHIR Observation</div>
-          <div class="fcv">SpO₂ 87%</div>
-          <div class="fcs">LOINC: 59408-5 · Affirmed</div>
-        </div>
+      <h1 class="hero-head">
+        Prior Authorization,
+        <span class="hero-serif"><span class="grad">Reimagined.</span></span>
+      </h1>
+      <p class="hero-sub">MHK has built the AI-powered utilization management platform your health plan needs &mdash; not from a startup with a demo, but from the partner already trusted by 30+ plans who holds your data, knows your workflows, and is accountable to your outcomes.</p>
+      <div class="hero-acts">
+        <a href="#why-now" class="btn-p">See Why the Moment Is Now</a>
+        <a href="#stakeholders" class="btn-s">My Role &rarr;</a>
+      </div>
+      <div class="hero-trust">
+        <span>30+ health plan clients</span><div class="dot"></div>
+        <span>HIPAA-ready</span><div class="dot"></div>
+        <span>CMS-0057-F compliant</span><div class="dot"></div>
+        <span>AWS Bedrock (Claude)</span><div class="dot"></div>
+        <span>FHIR R4 &middot; CQL &middot; Da Vinci</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ─── STATS ─── -->
+<!-- STATS -->
 <div class="stats-bar">
   <div class="wrap">
     <div class="sg">
       <div class="si3 rv">
-        <div class="snum grad" data-count="80" data-suf="%">0%</div>
-        <div class="slab">reduction in review time</div>
+        <div class="snum" style="color:var(--red)" data-count="82" data-suf=".7%">0</div>
+        <div class="slab">cases arrive<br>with missing docs</div>
       </div>
       <div class="si3 rv d1">
-        <div class="snum grad" data-count="95" data-suf="%">0%</div>
-        <div class="slab">AI confidence on auto-approvals</div>
+        <div class="snum grad" data-count="80" data-suf="%">0</div>
+        <div class="slab">reduction in<br>review time</div>
       </div>
       <div class="si3 rv d2">
-        <div class="snum" style="color:var(--cyan)">14</div>
-        <div class="slab">MCP tools in agent</div>
+        <div class="snum" style="color:var(--amber)">6 mo</div>
+        <div class="slab">to onboard a<br>new UM reviewer</div>
       </div>
       <div class="si3 rv d3">
-        <div class="snum" style="color:var(--mint)">218</div>
-        <div class="slab">tests passing</div>
+        <div class="snum grad" data-count="30" data-suf="+">0</div>
+        <div class="slab">health plans<br>trust MHK today</div>
+      </div>
+      <div class="si3 rv d4">
+        <div class="snum" style="color:var(--cyan)">2027</div>
+        <div class="slab">CMS FHIR PA<br>mandate deadline</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ─── PROBLEM ─── -->
-<section class="sec">
+<!-- THE MOMENT: WHY NOW -->
+<section class="sec" id="why-now">
   <div class="wrap">
     <div class="sh rv">
-      <div class="sec-label">The Challenge</div>
-      <h2 class="stitle">Prior auth is <span class="grad">broken.</span></h2>
-      <p class="ssub">Manual utilization management creates friction that delays care, exhausts clinical staff, and drives up administrative costs across the healthcare system.</p>
+      <div class="sec-label">Why Now</div>
+      <h2 class="stitle">Three forces converge.<br><span class="grad">All roads lead here.</span></h2>
+      <p class="ssub">The window for early-mover advantage is narrow. Three independent pressures are forcing every health plan to act &mdash; and they all arrive at the same answer.</p>
     </div>
-    <div class="prob-grid">
-      <div class="pstats">
-        <div class="pcard rv">
-          <div class="pnum">94%</div>
-          <div class="pdesc">of physicians report care delays due to prior authorization requirements (AMA, 2023)</div>
-        </div>
-        <div class="pcard warn rv d1">
-          <div class="pnum w">$31B</div>
-          <div class="pdesc">spent annually on prior authorization administrative costs in the U.S.</div>
-        </div>
-        <div class="pcard rv d2">
-          <div class="pnum">3 days</div>
-          <div class="pdesc">average manual review time — LucidReview brings this under 30 seconds</div>
-        </div>
+    <div class="forces-grid rv">
+      <div class="force-card">
+        <div class="force-num">01</div>
+        <div class="force-icon">&#9881;&#65039;</div>
+        <div class="force-title">Regulatory Mandate</div>
+        <div class="force-body">CMS-0057-F requires FHIR-based Prior Authorization APIs, faster turnaround times, and specific denial reasons for every MA plan and Medicaid MCO &mdash; starting 2026. Non-compliance isn't a fine. It's an audit, a headline, and a CMS relationship problem.</div>
+        <div class="force-tags"><span class="tag tc">Jan 2026</span><span class="tag tc">Jan 2027</span><span class="tag tc">Da Vinci PAS</span></div>
       </div>
-      <div class="ptxt rv d1">
-        <h3>Reviewers are drowning in complexity</h3>
-        <p>Utilization management nurses and medical directors must manually cross-reference hundreds of clinical criteria across NCDs, LCDs, and payer-specific policies — while juggling incomplete documentation, fax-based records, and urgent inpatient requests.</p>
-        <p>Traditional rule engines miss context buried in unstructured notes, fail to normalize across code systems, and can't explain their reasoning to appeal boards.</p>
-        <ul class="pbullets">
-          <li><div class="bico">✓</div><span>LucidReview reads and understands unstructured clinical documents via NLP</span></li>
-          <li><div class="bico">✓</div><span>Normalizes all evidence to FHIR R4 for consistent criteria evaluation</span></li>
-          <li><div class="bico">✓</div><span>Executes criteria as executable CQL — no ambiguous rule interpretation</span></li>
-          <li><div class="bico">✓</div><span>Provides full audit trail: every evidence link, every tool call, every decision</span></li>
-          <li><div class="bico">✓</div><span>Conservative logic routes uncertain cases to physician review — never guesses</span></li>
-        </ul>
+      <div class="force-card">
+        <div class="force-num">02</div>
+        <div class="force-icon">&#129309;</div>
+        <div class="force-title">AI Maturity</div>
+        <div class="force-body">For the first time, AI can read an unstructured clinical note, map it to FHIR, evaluate it against CQL criteria, and propose a defensible, auditable determination &mdash; reliably, at scale, in seconds. This wasn&rsquo;t possible three years ago. It&rsquo;s table stakes in three more.</div>
+        <div class="force-tags"><span class="tag tm">Claude on Bedrock</span><span class="tag tm">CQL Eval</span><span class="tag tm">NLP</span></div>
       </div>
+      <div class="force-card">
+        <div class="force-num">03</div>
+        <div class="force-icon">&#128104;&#8205;&#9877;&#65039;</div>
+        <div class="force-title">The Workforce Crisis</div>
+        <div class="force-body">UM reviewers are retiring faster than they can be replaced. Onboarding takes 6 months. Turnover is high. The institutional knowledge walking out the door cannot be rehired. The only sustainable path is an AI that carries that knowledge and never leaves.</div>
+        <div class="force-tags"><span class="tag ta">Aging Workforce</span><span class="tag ta">6-Mo Onboarding</span></div>
+      </div>
+    </div>
+    <div class="conv-banner rv">
+      <div class="conv-text">The question is not <em>whether</em> to automate prior authorization.</div>
+      <div class="conv-sub">It&rsquo;s whether you do it before your operational crisis forces your hand &mdash; or while you still have time to do it right.</div>
     </div>
   </div>
 </section>
 
 <div class="divider"></div>
 
-<!-- ─── HOW IT WORKS ─── -->
-<section class="sec sec-dark" id="how-it-works">
+<!-- WHY MHK -->
+<section class="sec sec-dark" id="why-mhk">
   <div class="wrap">
     <div class="sh rv">
-      <div class="sec-label">The Agent Pipeline</div>
-      <h2 class="stitle">8 steps from <span class="grad">case to determination</span></h2>
-      <p class="ssub">A Claude AI agent orchestrates the entire review workflow autonomously — gathering evidence, normalizing data, executing clinical logic, and proposing a defensible determination.</p>
+      <div class="sec-label">Why MHK</div>
+      <h2 class="stitle">We&rsquo;re not a new vendor.<br><span class="grad">We&rsquo;re already inside.</span></h2>
     </div>
-    <div class="wf-wrap">
-
-      <div class="wf-step rv">
-        <div class="wfn">01</div>
-        <div class="wfb">
-          <div class="wft">Case Data Retrieval</div>
-          <div class="wfd">The agent fetches the full case record from the UM system — patient demographics, ICD-10/CPT codes, service type (inpatient/outpatient/DME/home health), urgency flag, and member coverage verification.</div>
-          <div class="wftags"><span class="code-tag">fetch_case_data</span><span class="code-tag">ICD-10</span><span class="code-tag">CPT/HCPCS</span><span class="code-tag">REST API</span></div>
-        </div>
-      </div>
-
-      <div class="wf-step rv d1">
-        <div class="wfn">02</div>
-        <div class="wfb">
-          <div class="wft">Clinical Document Extraction</div>
-          <div class="wfd">Attached clinical documents (H&amp;P, progress notes, lab reports, imaging) are extracted via pdf-parse. Scanned or image-based PDFs fall back to AWS Textract OCR for full-text extraction.</div>
-          <div class="wftags"><span class="code-tag">extract_pdf_text</span><span class="code-tag">AWS Textract</span><span class="code-tag">OCR fallback</span></div>
-        </div>
-      </div>
-
-      <div class="wf-step rv d2">
-        <div class="wfn">03</div>
-        <div class="wfb">
-          <div class="wft">NLP Entity Extraction</div>
-          <div class="wfd">Clinical NLP (cTAKES/medspacy) extracts structured entities from unstructured text: diagnoses with assertion context (affirmed/negated/uncertain), vital signs, lab values, medications, and procedures — each tagged with temporality (recent vs. historical).</div>
-          <div class="wftags"><span class="code-tag">run_nlp_extraction</span><span class="code-tag">cTAKES</span><span class="code-tag">medspacy</span><span class="code-tag">SNOMED</span><span class="code-tag">LOINC</span></div>
-        </div>
-      </div>
-
-      <div class="wf-step rv">
-        <div class="wfn">04</div>
-        <div class="wfb">
-          <div class="wft">FHIR R4 Normalization</div>
-          <div class="wfd">All extracted clinical evidence is normalized into a FHIR R4 Bundle and persisted to HAPI FHIR server — creating Patient, Encounter, Condition, Observation, Procedure, MedicationRequest, and DocumentReference resources with proper code system bindings.</div>
-          <div class="wftags"><span class="code-tag">create_fhir_bundle</span><span class="code-tag">HAPI FHIR R4</span><span class="code-tag">ICD-10-CM</span><span class="code-tag">RxNorm</span></div>
-        </div>
-      </div>
-
-      <div class="wf-step rv d1">
-        <div class="wfn">05</div>
-        <div class="wfb">
-          <div class="wft">Policy Matching</div>
-          <div class="wfd">The agent queries the policy library to find all applicable coverage policies for the case's diagnosis codes and service type — matching against NCDs, LCDs, and internal payer policies with ranked relevance scores.</div>
-          <div class="wftags"><span class="code-tag">lookup_policies</span><span class="code-tag">NCD</span><span class="code-tag">LCD</span><span class="code-tag">Internal</span></div>
-        </div>
-      </div>
-
-      <div class="wf-step rv d2">
-        <div class="wfn">06</div>
-        <div class="wfb">
-          <div class="wft">CQL Criteria Evaluation</div>
-          <div class="wfd">Coverage criteria are evaluated as executable Clinical Quality Language (CQL) expressions against the FHIR data in HAPI FHIR's Clinical Reasoning module — producing a definitive MET / NOT_MET / UNKNOWN result for each individual criterion with evidence citations.</div>
-          <div class="wftags"><span class="code-tag">evaluate_cql</span><span class="code-tag">CQL 1.5</span><span class="code-tag">HAPI FHIR CRM</span><span class="code-tag">AND/OR trees</span></div>
-        </div>
-      </div>
-
-      <div class="wf-step rv">
-        <div class="wfn">07</div>
-        <div class="wfb">
-          <div class="wft">Determination Logic</div>
-          <div class="wfd">Conservative deterministic logic counts criterion outcomes: all MET → AUTO_APPROVE; any NOT_MET → MD_REVIEW; any UNKNOWN → MORE_INFO. The LLM summarizes rationale but never overrides deterministic logic — ensuring reproducibility and auditability.</div>
-          <div class="wftags"><span class="code-tag">propose_determination</span><span class="code-tag">AUTO_APPROVE</span><span class="code-tag">MD_REVIEW</span><span class="code-tag">MORE_INFO</span></div>
-        </div>
-      </div>
-
-      <div class="wf-step rv d1">
-        <div class="wfn">08</div>
-        <div class="wfb">
-          <div class="wft">Reviewer Handoff &amp; Audit Trail</div>
-          <div class="wfd">The full agent trace — every tool call, input, output, and latency — is stored for auditor and appeal review. Physician reviewers see a structured criteria checklist with FHIR evidence links, confidence scores, and AI rationale before confirming or overriding.</div>
-          <div class="wftags"><span class="code-tag">audit_log</span><span class="code-tag">override_reason</span><span class="code-tag">FHIR references</span><span class="code-tag">JWT auth</span></div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- ─── REVIEWER UI MOCKUP ─── -->
-<section class="sec sec-surf" id="reviewer-ui">
-  <div class="wrap">
-    <div class="sh rv">
-      <div class="sec-label">Reviewer Experience</div>
-      <h2 class="stitle">Built for <span class="grad">clinical workflows</span></h2>
-      <p class="ssub">The reviewer dashboard puts every piece of evidence, every agent decision, and every policy reference at the clinician's fingertips — without adding cognitive load.</p>
-    </div>
-    <div class="mockup rv">
-      <div class="mb-bar">
-        <div class="mb-dot" style="background:#ff5f57"></div>
-        <div class="mb-dot" style="background:#ffbd2e"></div>
-        <div class="mb-dot" style="background:#28c840"></div>
-        <div class="mb-url">lucidreview.mhkdevsandbox.com / reviews / ARF-2026-001</div>
-      </div>
-      <div class="mb-body">
-        <div class="mb-sidebar">
-          <div class="mb-slogo"><div class="mb-slm">LR</div><div class="mb-slt">LucidReview</div></div>
-          <div class="mb-nav act"><span>📋</span> Review Queue</div>
-          <div class="mb-nav"><span>🔍</span> Coverage Check</div>
-          <div class="mb-nav"><span>📚</span> Policy Browser</div>
-          <div class="mb-nav"><span>⚙️</span> Settings</div>
-        </div>
-        <div class="mb-main">
-          <div class="mb-ch">
-            <div>
-              <div class="mb-cid">Case · ARF-2026-001</div>
-              <div class="mb-cdx">Acute Respiratory Failure (J96.00) · INPATIENT</div>
-            </div>
-            <div class="mb-sbadge">IN_REVIEW</div>
-          </div>
-          <div class="mb-trace">
-            <div class="mb-ttitle">AGENT TRACE — 7 steps completed</div>
-            <div class="tr-row"><div class="trd d"></div><span class="trn">fetch_case_data</span><span class="trl">142ms</span></div>
-            <div class="tr-row"><div class="trd d"></div><span class="trn">extract_clinical_docs</span><span class="trl">891ms</span></div>
-            <div class="tr-row"><div class="trd d"></div><span class="trn">run_nlp_extraction</span><span class="trl">1,203ms</span></div>
-            <div class="tr-row"><div class="trd d"></div><span class="trn">normalize_to_fhir</span><span class="trl">445ms</span></div>
-            <div class="tr-row"><div class="trd d"></div><span class="trn">lookup_policies → NCD 240.0</span><span class="trl">67ms</span></div>
-            <div class="tr-row"><div class="trd d"></div><span class="trn">evaluate_cql_criteria</span><span class="trl">312ms</span></div>
-            <div class="tr-row"><div class="trd d"></div><span class="trn">propose_determination</span><span class="trl">89ms</span></div>
-          </div>
-          <div class="mb-crit">
-            <div class="mb-ctitle">CRITERIA CHECKLIST — NCD 240.0 (8/8 Met)</div>
-            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">SpO₂ ≤ 88% documented</span><span class="crev">Obs/SpO2-001</span></div>
-            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">PaO₂ ≤ 55 mmHg on room air</span><span class="crev">Obs/ABG-003</span></div>
-            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">Acute onset confirmed</span><span class="crev">Cond/J96.00</span></div>
-            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">Inpatient level of care required</span><span class="crev">Enc/IP-2026</span></div>
-            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">Treating physician attestation present</span><span class="crev">Doc/HP-001</span></div>
+    <div class="mhk-grid">
+      <div class="mhk-pillars rv">
+        <div class="pillar">
+          <div class="pillar-ico" style="background:var(--cyan3)">&#128200;</div>
+          <div class="pillar-body">
+            <h4>We already hold the data</h4>
+            <p>MHK is the system of record for your members, claims, authorizations, and clinical history. LucidReview doesn&rsquo;t need a six-month integration project &mdash; it reads from the source we already maintain.</p>
           </div>
         </div>
-        <div class="mb-right">
-          <div class="mb-pc">
-            <div class="mb-pt">PATIENT · MEMBER</div>
-            <div class="pr-row"><span class="prk">DOB</span><span class="prv">1958-03-12</span></div>
-            <div class="pr-row"><span class="prk">MRN</span><span class="prv">MRN-889241</span></div>
-            <div class="pr-row"><span class="prk">Payer</span><span class="prv">Medicare A/B</span></div>
-            <div class="pr-row"><span class="prk">Urgency</span><span class="prv" style="color:var(--amber)">URGENT</span></div>
-            <div class="pr-row"><span class="prk">Service</span><span class="prv">Inpatient</span></div>
+        <div class="pillar">
+          <div class="pillar-ico" style="background:var(--mint3)">&#9989;</div>
+          <div class="pillar-body">
+            <h4>Proven platform accountability</h4>
+            <p>30+ health plans chose MHK because we deliver on what we promise. We carry that same accountability standard into LucidReview. This isn&rsquo;t a beta from a startup &mdash; it&rsquo;s a production capability from a trusted partner.</p>
           </div>
-          <div class="mb-det">
-            <div class="mb-dl">AI DETERMINATION</div>
-            <div class="mb-dv">AUTO_APPROVE</div>
-            <div class="mb-dc">Confidence: 95% · All 8 criteria MET</div>
-            <button class="mb-dbtn">Confirm Approval</button>
+        </div>
+        <div class="pillar">
+          <div class="pillar-ico" style="background:var(--amberD)">&#128279;</div>
+          <div class="pillar-body">
+            <h4>Specialist, not generic</h4>
+            <p>Health plans rightly prefer specialist workflows over generic AI tools. LucidReview is built specifically for UM &mdash; the CQL criteria, FHIR models, and clinical NLP are all purpose-designed for prior authorization, not adapted from something else.</p>
           </div>
+        </div>
+        <div class="pillar">
+          <div class="pillar-ico" style="background:var(--violetD)">&#128640;</div>
+          <div class="pillar-body">
+            <h4>AI-first reinvention</h4>
+            <p>MHK is evolving from a data platform to an AI-first, agent-first company. LucidReview is the first production expression of that evolution. Choosing LucidReview means growing alongside a partner committed to this future &mdash; not one selling a product and moving on.</p>
+          </div>
+        </div>
+      </div>
+      <div class="mhk-statement rv d1">
+        <p class="mhk-quote">&ldquo;The most dangerous thing a health plan can do right now is buy a <em>generic AI tool</em> from a vendor who doesn&rsquo;t know prior auth.&rdquo;</p>
+        <div class="mhk-clients">
+          <div class="mc-num">30+</div>
+          <div class="mc-label">
+            <strong>Health Plans Trust MHK</strong>
+            Care prominence, prior auth workflows, and clinical data management &mdash; already in production.
+          </div>
+        </div>
+        <p class="mhk-note">LucidReview is not a pivot. It is the next natural layer of the platform your plan already runs on. The integration is not a project &mdash; it is an upgrade.</p>
+        <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
+          <span class="tag tc">Proven Platform</span>
+          <span class="tag tm">Data Holder</span>
+          <span class="tag ta">UM Specialist</span>
+          <span class="tag" style="color:var(--violet);border-color:rgba(139,92,246,.28);background:var(--violetD)">Agent-First</span>
         </div>
       </div>
     </div>
@@ -696,132 +448,41 @@ footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
 
 <div class="divider"></div>
 
-<!-- ─── FEATURES ─── -->
-<section class="sec" id="features">
+<!-- WORKFORCE CRISIS -->
+<section class="sec sec-surf" id="workforce">
   <div class="wrap">
     <div class="sh rv">
-      <div class="sec-label">Platform Features</div>
-      <h2 class="stitle">Everything for <span class="grad">modern UM teams</span></h2>
+      <div class="sec-label">The Workforce Reality</div>
+      <h2 class="stitle">Your best reviewer just retired.<br><span class="grad">The next one takes 6 months.</span></h2>
+      <p class="ssub">This is not a future risk. It is the operational reality at health plans today. And it compounds every year.</p>
     </div>
-    <div class="fgrid">
-
-      <div class="fcard rv">
-        <div class="fico" style="background:var(--cyan3)">🤖</div>
-        <div class="ftitle">Claude AI Agent</div>
-        <div class="fdesc">A fully autonomous Claude Sonnet 4.6 agent on AWS Bedrock orchestrates the entire 8-step review workflow using 14 Model Context Protocol (MCP) tools — from data fetch to final determination proposal.</div>
-        <div class="ffoot"><span class="code-tag">Claude Sonnet 4.6</span><span class="code-tag">AWS Bedrock</span><span class="code-tag">MCP Protocol</span></div>
+    <div class="crisis-grid rv">
+      <div class="crisis-card red">
+        <div class="crisis-stat">6 mo</div>
+        <div class="crisis-label">Onboarding time for a new UM reviewer</div>
+        <div class="crisis-body">A new nurse reviewer needs 6 months before they can work independently on complex cases. During that time, they require supervision, make more errors, and reduce the throughput of the reviewer training them. Every departure restarts this clock.</div>
       </div>
-
-      <div class="fcard rv d1">
-        <div class="fico" style="background:var(--mint3)">⚕️</div>
-        <div class="ftitle">FHIR R4 Integration</div>
-        <div class="fdesc">All clinical evidence is normalized to FHIR R4 resources and persisted to HAPI FHIR server — enabling standards-compliant interoperability, CQL evaluation, and portable audit records across EHR systems.</div>
-        <div class="ffoot"><span class="code-tag">HAPI FHIR R4</span><span class="code-tag">ICD-10-CM</span><span class="code-tag">LOINC</span><span class="code-tag">SNOMED</span></div>
+      <div class="crisis-card amber">
+        <div class="crisis-stat">High</div>
+        <div class="crisis-label">Turnover rate in utilization management roles</div>
+        <div class="crisis-body">UM reviewers burn out on repetitive, documentation-heavy work. The irony: the cases that drain them most &mdash; chasing missing records, writing the same denial rationale for the 500th time &mdash; are exactly the cases AI handles best.</div>
       </div>
-
-      <div class="fcard rv d2">
-        <div class="fico" style="background:rgba(139,92,246,.1)">📐</div>
-        <div class="ftitle">CQL Criteria Engine</div>
-        <div class="fdesc">Coverage criteria stored and executed as CQL 1.5 libraries — the same standard powering CMS eCQMs. No ambiguous rule interpretation; every evaluation is reproducible and explainable.</div>
-        <div class="ffoot"><span class="code-tag">CQL 1.5</span><span class="code-tag">HAPI CRM</span><span class="code-tag">NCD/LCD</span></div>
+      <div class="crisis-card red">
+        <div class="crisis-stat">&#8593;&#8593;</div>
+        <div class="crisis-label">Proportion of UM staff approaching retirement</div>
+        <div class="crisis-body">The UM workforce skews toward experienced clinicians who are now within 5&ndash;10 years of retirement. The institutional knowledge they carry &mdash; clinical intuition, policy patterns, edge-case judgment &mdash; cannot simply be rehired. It must be systematized before it walks out.</div>
       </div>
-
-      <div class="fcard rv">
-        <div class="fico" style="background:rgba(245,166,35,.1)">🧠</div>
-        <div class="ftitle">Clinical NLP</div>
-        <div class="fdesc">cTAKES and medspacy extract clinical entities from unstructured physician notes — complete with assertion context (affirmed/negated/uncertain) and temporality (recent/historical) for each finding.</div>
-        <div class="ffoot"><span class="code-tag">cTAKES</span><span class="code-tag">medspacy</span><span class="code-tag">Assertions</span></div>
+      <div class="crisis-card amber">
+        <div class="crisis-stat">82.7%</div>
+        <div class="crisis-label">Cases arriving with documentation gaps</div>
+        <div class="crisis-body">4 in 5 cases reach your reviewer missing something. They spend the first half of every review chasing records, calling providers, and waiting for fax responses. This is not clinical work. It is administrative overhead. AI eliminates it before the case ever reaches a human.</div>
       </div>
-
-      <div class="fcard rv d1">
-        <div class="fico" style="background:var(--cyan3)">🔎</div>
-        <div class="ftitle">Policy Browser</div>
-        <div class="fdesc">Searchable library of all NCDs, LCDs, and internal policies with structured criteria sets and CQL library links. Reviewers can explore coverage rules interactively for any ICD-10/CPT combination.</div>
-        <div class="ffoot"><span class="code-tag">NCD</span><span class="code-tag">LCD</span><span class="code-tag">Coverage Check</span></div>
-      </div>
-
-      <div class="fcard rv d2">
-        <div class="fico" style="background:rgba(245,99,66,.08)">🛡️</div>
-        <div class="ftitle">Full Audit Trail</div>
-        <div class="fdesc">Every agent run, tool call, determination, override, and reviewer action is written to an immutable audit log with actor type, timestamps, and token usage — ready for regulatory review and appeals.</div>
-        <div class="ffoot"><span class="code-tag">audit_log</span><span class="code-tag">BullMQ</span><span class="code-tag">MySQL 8</span></div>
-      </div>
-
-      <div class="fcard rv">
-        <div class="fico" style="background:var(--mint3)">📊</div>
-        <div class="ftitle">Review Queue Dashboard</div>
-        <div class="fdesc">Real-time review queue with status filtering (pending/in_review/decided), urgency flags, determination badges, and stat cards — powered by TanStack Query with automatic refresh.</div>
-        <div class="ffoot"><span class="code-tag">React 19</span><span class="code-tag">TanStack Query</span><span class="code-tag">Real-time</span></div>
-      </div>
-
-      <div class="fcard rv d1">
-        <div class="fico" style="background:rgba(139,92,246,.1)">🌳</div>
-        <div class="ftitle">Criteria Tree Visualization</div>
-        <div class="fdesc">Complex AND/OR criteria logic rendered as an interactive decision tree — reviewers can see exactly which branches are MET, NOT_MET, or UNKNOWN, with direct links to the supporting FHIR evidence.</div>
-        <div class="ffoot"><span class="code-tag">Decision Tree</span><span class="code-tag">AND/OR logic</span><span class="code-tag">Evidence links</span></div>
-      </div>
-
-      <div class="fcard rv d2">
-        <div class="fico" style="background:rgba(245,166,35,.1)">🚀</div>
-        <div class="ftitle">Production Deployment</div>
-        <div class="fdesc">Multi-stage Docker builds, Helm-ready Terraform configs, BullMQ job queues with Redis, and environment-based configuration for AWS Bedrock, HAPI FHIR, and MySQL — ready for enterprise deployment.</div>
-        <div class="ffoot"><span class="code-tag">Docker</span><span class="code-tag">Terraform</span><span class="code-tag">Redis</span><span class="code-tag">Helm</span></div>
-      </div>
-
     </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- ─── ARCHITECTURE ─── -->
-<section class="sec sec-surf" id="architecture">
-  <div class="wrap">
-    <div class="sh rv">
-      <div class="sec-label">System Architecture</div>
-      <h2 class="stitle">A <span class="grad">microservices platform</span><br>built for healthcare scale</h2>
-    </div>
-    <div class="arch-box-wrap rv">
-      <div class="arch-rows">
-        <div>
-          <div class="arch-rl">// Reviewer Interface</div>
-          <div class="arch-ri">
-            <div class="arch-b ac"><div class="arch-bico">⚛️</div><div class="arch-bname">Reviewer UI</div><div class="arch-bdet">React 19 · Vite · :5173</div></div>
-            <div class="arch-b"><div class="arch-bico">🔄</div><div class="arch-bname">TanStack Query</div><div class="arch-bdet">Real-time data fetching</div></div>
-            <div class="arch-b"><div class="arch-bico">🎨</div><div class="arch-bname">Tailwind CSS</div><div class="arch-bdet">Utility-first styling</div></div>
-          </div>
-        </div>
-        <div class="arch-arr">↕</div>
-        <div>
-          <div class="arch-rl">// API &amp; Orchestration Layer</div>
-          <div class="arch-ri">
-            <div class="arch-b ac"><div class="arch-bico">⚡</div><div class="arch-bname">Fastify Backend</div><div class="arch-bdet">Node.js API · :3000</div></div>
-            <div class="arch-b ac"><div class="arch-bico">🤖</div><div class="arch-bname">Bedrock Agent Runner</div><div class="arch-bdet">Claude Sonnet 4.6 loop</div></div>
-            <div class="arch-b"><div class="arch-bico">📬</div><div class="arch-bname">BullMQ Workers</div><div class="arch-bdet">Async job processing</div></div>
-            <div class="arch-b"><div class="arch-bico">🔐</div><div class="arch-bname">JWT Auth</div><div class="arch-bdet">Role-based access</div></div>
-          </div>
-        </div>
-        <div class="arch-arr">↕</div>
-        <div>
-          <div class="arch-rl">// MCP Tool Server (14 Tools)</div>
-          <div class="arch-ri">
-            <div class="arch-b am"><div class="arch-bico">🔧</div><div class="arch-bname">UM REST Tools</div><div class="arch-bdet">7 tools · Case/Docs/Coverage</div></div>
-            <div class="arch-b am"><div class="arch-bico">📄</div><div class="arch-bname">PDF + OCR Tool</div><div class="arch-bdet">pdf-parse + AWS Textract</div></div>
-            <div class="arch-b am"><div class="arch-bico">🧠</div><div class="arch-bname">NLP Tool</div><div class="arch-bdet">cTAKES / medspacy</div></div>
-            <div class="arch-b am"><div class="arch-bico">⚕️</div><div class="arch-bname">FHIR Tools</div><div class="arch-bdet">Bundle · Query · CQL eval</div></div>
-          </div>
-        </div>
-        <div class="arch-arr">↕</div>
-        <div>
-          <div class="arch-rl">// External Services &amp; Data Stores</div>
-          <div class="arch-ri">
-            <div class="arch-b"><div class="arch-bico">☁️</div><div class="arch-bname">AWS Bedrock</div><div class="arch-bdet">Claude Sonnet · temp=0.1</div></div>
-            <div class="arch-b av"><div class="arch-bico">🏥</div><div class="arch-bname">HAPI FHIR R4</div><div class="arch-bdet">Clinical data · CRM · :8080</div></div>
-            <div class="arch-b"><div class="arch-bico">🔬</div><div class="arch-bname">NLP Service</div><div class="arch-bdet">cTAKES · :8081</div></div>
-            <div class="arch-b"><div class="arch-bico">🗄️</div><div class="arch-bname">MySQL 8.0</div><div class="arch-bdet">Reviews · Policies · Audit</div></div>
-            <div class="arch-b"><div class="arch-bico">⚡</div><div class="arch-bname">Redis 7</div><div class="arch-bdet">BullMQ job queue</div></div>
-          </div>
-        </div>
+    <div class="solution-strip rv">
+      <div class="sol-icon">&#128161;</div>
+      <div>
+        <div class="sol-title">Not layoffs. Liberation.</div>
+        <div class="sol-body">LucidReview handles the routine so your reviewers can focus on what only they can do: <strong>complex clinical judgment, member advocacy, and physician peer-to-peer reviews.</strong> The productivity gain doesn&rsquo;t come from reducing headcount &mdash; it comes from radically increasing the value of every hour your clinical team works. One experienced reviewer with LucidReview outperforms three without it.</div>
       </div>
     </div>
   </div>
@@ -829,90 +490,37 @@ footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
 
 <div class="divider"></div>
 
-<!-- ─── CLINICAL STANDARDS ─── -->
-<section class="sec" id="clinical">
-  <div class="wrap">
-    <div class="sh rv">
-      <div class="sec-label">Clinical Standards</div>
-      <h2 class="stitle">Built on the <span class="grad">standards that matter</span></h2>
-      <p class="ssub">LucidReview doesn't build proprietary data formats. Every clinical concept uses the interoperability standards that regulators, payers, and providers already rely on.</p>
-    </div>
-    <div class="std-grid">
-
-      <div class="std-card rv">
-        <div class="std-ico" style="background:var(--cyan3)">🏥</div>
-        <div class="std-body">
-          <h3>FHIR R4</h3>
-          <p>All clinical evidence is normalized to HL7 FHIR R4 resources — enabling standards-compliant interoperability with any EHR system. Patient, Encounter, Condition, Observation, Procedure, MedicationRequest, and DocumentReference resources are created with proper terminology bindings.</p>
-          <div class="std-codes"><span class="tag tc">Patient</span><span class="tag tc">Encounter</span><span class="tag tc">Condition</span><span class="tag tc">Observation</span></div>
-        </div>
-      </div>
-
-      <div class="std-card rv d1">
-        <div class="std-ico" style="background:rgba(139,92,246,.1)">📐</div>
-        <div class="std-body">
-          <h3>Clinical Quality Language (CQL)</h3>
-          <p>Coverage criteria are expressed as CQL 1.5 libraries — the same standard powering CMS eCQMs and HEDIS measures. Criteria execute against live FHIR data via HAPI FHIR's Clinical Reasoning module, producing MET / NOT_MET / UNKNOWN with FHIR resource citations.</p>
-          <div class="std-codes"><span class="tag tc">CQL 1.5</span><span class="tag tc">HAPI CRM</span><span class="tag tc">eCQM-compatible</span></div>
-        </div>
-      </div>
-
-      <div class="std-card rv d2">
-        <div class="std-ico" style="background:rgba(245,166,35,.1)">🔤</div>
-        <div class="std-body">
-          <h3>Clinical Terminology</h3>
-          <p>Full support for the major clinical code systems used in utilization management: ICD-10-CM for diagnoses, SNOMED CT for clinical findings, LOINC for lab and vital observations, RxNorm for medications, and CPT/HCPCS for procedures and services.</p>
-          <div class="std-codes"><span class="tag ta">ICD-10-CM</span><span class="tag ta">SNOMED CT</span><span class="tag ta">LOINC</span><span class="tag ta">RxNorm</span><span class="tag ta">CPT</span></div>
-        </div>
-      </div>
-
-      <div class="std-card rv d3">
-        <div class="std-ico" style="background:var(--mint3)">📋</div>
-        <div class="std-body">
-          <h3>Coverage Policy Standards</h3>
-          <p>Supports all three tiers of Medicare coverage policy: National Coverage Determinations (NCDs) published by CMS nationally, Local Coverage Determinations (LCDs) from Medicare Administrative Contractors, and internal payer-specific policies — all with structured criteria sets.</p>
-          <div class="std-codes"><span class="tag tm">NCD</span><span class="tag tm">LCD</span><span class="tag tm">Internal</span><span class="tag tm">CMS</span></div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- ─── DETERMINATION OUTCOMES ─── -->
+<!-- WHAT LUCIDREVIEW DOES -->
 <section class="sec sec-dark">
   <div class="wrap">
     <div class="sh rv">
-      <div class="sec-label">Determination Logic</div>
-      <h2 class="stitle">Conservative by design. <span class="grad">Explainable by default.</span></h2>
-      <p class="ssub">LucidReview never gambles with clinical decisions. Deterministic logic — not LLM inference — drives every outcome. The AI summarizes; the criteria decide.</p>
+      <div class="sec-label">The Platform</div>
+      <h2 class="stitle">What actually changes<br><span class="grad">when you deploy LucidReview.</span></h2>
     </div>
-    <div class="det-grid">
-      <div class="det-card ap rv">
-        <div class="det-ico">✅</div>
-        <div class="det-name">AUTO_APPROVE</div>
-        <div class="det-rule">All criteria in scope return MET. Evidence is complete and unambiguous. High confidence threshold reached.</div>
-        <div class="det-conf">Confidence ≥ 90% · All criteria MET</div>
+    <div class="manifesto-grid rv">
+      <div class="mf-cell c-cyan">
+        <div class="mf-num">Before a reviewer opens the case</div>
+        <div class="mf-title">Documentation gaps are already found</div>
+        <div class="mf-body">AI reads the case, downloads the clinical PDFs, runs NLP to extract clinical entities, and flags every missing element before a human ever sees it. The case that reaches your reviewer is complete &mdash; or already has a specific request out for what&rsquo;s missing.</div>
+        <div class="mf-stat">82.7% &rarr; 0%</div>
       </div>
-      <div class="det-card rv rv d1">
-        <div class="det-ico">👨‍⚕️</div>
-        <div class="det-name">MD_REVIEW</div>
-        <div class="det-rule">One or more criteria return NOT_MET or borderline evidence. Routes to physician reviewer for clinical judgment.</div>
-        <div class="det-conf">Any NOT_MET → escalate to physician</div>
+      <div class="mf-cell c-mint">
+        <div class="mf-num">In 30 seconds</div>
+        <div class="mf-title">CMS criteria are evaluated against real clinical evidence</div>
+        <div class="mf-body">CQL criteria execute deterministically against FHIR-normalized patient data. Every criterion is MET, NOT_MET, or UNKNOWN &mdash; with a specific FHIR resource and document citation. The AI doesn&rsquo;t guess. It cites.</div>
+        <div class="mf-stat">3&ndash;8 min</div>
       </div>
-      <div class="det-card mi rv d2">
-        <div class="det-ico">📋</div>
-        <div class="det-name">MORE_INFO</div>
-        <div class="det-rule">One or more criteria return UNKNOWN due to missing or ambiguous documentation. Additional records requested.</div>
-        <div class="det-conf">Any UNKNOWN → request documentation</div>
+      <div class="mf-cell c-amber">
+        <div class="mf-num">For your reviewer</div>
+        <div class="mf-title">A structured summary, not a pile of documents</div>
+        <div class="mf-body">The reviewer sees a criteria checklist with evidence links, an AI-generated rationale, and a proposed determination. They verify, approve, or override &mdash; with full context in a fraction of the time. The AI works for the reviewer, not instead of them.</div>
+        <div class="mf-stat">15 min &rarr; 3 min</div>
       </div>
-      <div class="det-card dn rv d3">
-        <div class="det-ico">❌</div>
-        <div class="det-name">DENY</div>
-        <div class="det-rule">All criteria clearly NOT_MET with complete evidence. Conservative application; rare in practice; always goes to MD_REVIEW first.</div>
-        <div class="det-conf">All NOT_MET + complete evidence</div>
+      <div class="mf-cell c-violet">
+        <div class="mf-num">On every decision</div>
+        <div class="mf-title">An immutable audit trail is created automatically</div>
+        <div class="mf-body">Every tool call, every evidence reference, every model version, every reviewer action &mdash; logged immutably. CMS audits, appeals boards, and internal QA all have exactly what they need. Human variability in documentation is eliminated by design.</div>
+        <div class="mf-stat">100% audit-ready</div>
       </div>
     </div>
   </div>
@@ -920,43 +528,175 @@ footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
 
 <div class="divider"></div>
 
-<!-- ─── SECURITY ─── -->
-<section class="sec" id="security">
+<!-- STAKEHOLDER PANEL -->
+<section class="sec" id="stakeholders">
   <div class="wrap">
     <div class="sh rv">
-      <div class="sec-label">Security &amp; Compliance</div>
-      <h2 class="stitle">Enterprise-grade <span class="grad">trust infrastructure</span></h2>
+      <div class="sec-label">By Role</div>
+      <h2 class="stitle">The same platform.<br><span class="grad">Different answers for different questions.</span></h2>
+      <p class="ssub">Every stakeholder at the table has a different concern. We&rsquo;ve built the answer to each one.</p>
     </div>
-    <div class="comp-grid">
-      <div class="comp-card rv">
-        <div class="comp-ico">🔒</div>
-        <div class="comp-title">HIPAA-Ready Architecture</div>
-        <div class="comp-desc">All PHI handled within your VPC. AWS Bedrock processes data under BAA. No patient data leaves your cloud boundary. Designed for HIPAA Technical Safeguards compliance.</div>
+    <div class="stk-tabs rv">
+      <button class="stk-tab active" data-role="ceo">CEO</button>
+      <button class="stk-tab" data-role="cfo">CFO</button>
+      <button class="stk-tab" data-role="coo">COO</button>
+      <button class="stk-tab" data-role="cto">CTO</button>
+      <button class="stk-tab" data-role="cio">CIO</button>
+    </div>
+
+    <!-- CEO -->
+    <div class="stk-panel active rv" id="panel-ceo">
+      <div class="stk-left">
+        <div class="stk-role" style="color:var(--cyan)">Chief Executive Officer</div>
+        <h3>This is your <span class="grad">competitive moat</span> moment.</h3>
+        <p>The health plans that win the next decade will be the ones that systematized clinical operations before their competitors did. LucidReview is MHK&rsquo;s answer to that inflection point &mdash; and it&rsquo;s available to you first because you already have the integration foundation.</p>
+        <p>This is not an IT project. It is a strategic positioning decision. Your competitors are evaluating this right now.</p>
+        <div class="stk-pains">
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>AI-first transformation with a partner who understands your clinical workflows</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>CMS-0057-F compliance before competitors are scrambling to catch up</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Demonstrates to CMS, URAC, and NCQA that your plan is investing in quality infrastructure</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Proven partner accountability &mdash; not a startup with a pitch</span></div>
+        </div>
       </div>
-      <div class="comp-card rv d1">
-        <div class="comp-ico">📝</div>
-        <div class="comp-title">Immutable Audit Log</div>
-        <div class="comp-desc">Every agent action, tool call, determination, override, and reviewer note is written to an append-only audit log with actor type, timestamp, and complete input/output — ready for CMS audits and appeals.</div>
+      <div class="stk-right">
+        <div class="stk-kpi"><div class="kpi-val grad">First-mover</div><div class="kpi-label">Advantage window is narrow</div><div class="kpi-note">Plans deploying now build operational muscle competitors won&rsquo;t have for 18-24 months</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--amber)">2026&ndash;2027</div><div class="kpi-label">CMS mandate dates</div><div class="kpi-note">FHIR PA APIs and specific denial reasons required &mdash; LucidReview is already compliant</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--mint)">Agent-first</div><div class="kpi-label">MHK&rsquo;s strategic direction</div><div class="kpi-note">Choosing LucidReview means your plan grows with a platform committed to this future</div></div>
       </div>
-      <div class="comp-card rv d2">
-        <div class="comp-ico">👥</div>
-        <div class="comp-title">Role-Based Access Control</div>
-        <div class="comp-desc">JWT-based authentication with three roles: NURSE_REVIEWER (queue, view cases), MD_REVIEWER (override determinations), and ADMIN (system config, user management, prompt versioning).</div>
+    </div>
+
+    <!-- CFO -->
+    <div class="stk-panel" id="panel-cfo">
+      <div class="stk-left">
+        <div class="stk-role" style="color:var(--amber)">Chief Financial Officer</div>
+        <h3>The ROI is real.<br><span class="si">The risk of waiting is bigger.</span></h3>
+        <p>At $15&ndash;25 per case in blended clinical reviewer labor, a 100K-member plan spends $45&ndash;200K per month on UM reviews. LucidReview brings the effective cost to $3&ndash;8 per case. That&rsquo;s $540K&ndash;$1M in annual savings at a single mid-size plan.</p>
+        <p>And this is not a headcount reduction story &mdash; it&rsquo;s a throughput story. The same team reviews more cases, makes more consistent decisions, and generates less appeal liability.</p>
+        <div class="stk-pains">
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>60&ndash;80% cost reduction per case without layoffs</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Reduced appeal liability &mdash; consistent, evidence-based decisions</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>No MCG/InterQual licensing ($500K&ndash;1M/year saved)</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>PMPM pricing &mdash; predictable, scales with the plan</span></div>
+        </div>
       </div>
-      <div class="comp-card rv">
-        <div class="comp-ico">🔑</div>
-        <div class="comp-title">Human Oversight Guarantee</div>
-        <div class="comp-desc">The AI agent never directly approves or denies. It proposes a determination with evidence. A licensed clinician confirms or overrides — satisfying CMS and URAC human review requirements.</div>
+      <div class="stk-right">
+        <div class="stk-kpi"><div class="kpi-val grad">$540K&ndash;$1M</div><div class="kpi-label">Annual savings at a 100K-member plan</div><div class="kpi-note">$15&ndash;25/case today &rarr; $3&ndash;8/case with LucidReview</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--amber)">$500K&ndash;1M+</div><div class="kpi-label">MCG/InterQual licensing eliminated</div><div class="kpi-note">Public CMS criteria are legally correct for MA/Medicaid and cost nothing</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--red)">Cost of waiting</div><div class="kpi-label">$45&ndash;200K/month sitting on the table</div><div class="kpi-note">Every month without LucidReview is a month of avoidable overspend</div></div>
       </div>
-      <div class="comp-card rv d1">
-        <div class="comp-ico">🧪</div>
-        <div class="comp-title">Validated &amp; Tested</div>
-        <div class="comp-desc">218-test suite across all packages (Vitest) plus 13 integration tests against real MySQL and HAPI FHIR instances. Prompt versioning enables A/B testing and rollback of AI system prompts without redeployment.</div>
+    </div>
+
+    <!-- COO -->
+    <div class="stk-panel" id="panel-coo">
+      <div class="stk-left">
+        <div class="stk-role" style="color:var(--mint)">Chief Operating Officer</div>
+        <h3>Throughput triples.<br><span class="grad">Consistency is guaranteed.</span></h3>
+        <p>Today, your UM operation is a bottleneck. Cases wait. Reviewers vary. Documentation gaps cause delays. New hires reduce capacity for six months while they learn. LucidReview doesn&rsquo;t just make each review faster &mdash; it makes the entire operation predictable.</p>
+        <p>One experienced reviewer with LucidReview processes the equivalent caseload of three without it. That&rsquo;s your answer to headcount constraints without a hiring crisis.</p>
+        <div class="stk-pains">
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Documentation gaps detected before the case reaches a reviewer &mdash; no more chasing faxes</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>New hires become productive in days, not months &mdash; AI carries the institutional knowledge</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Same-day decisions on algorithmic cases (OOA foreseen need, NFDS, preservice outpatient)</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Retiring reviewers&rsquo; expertise codified in CQL &mdash; it never leaves</span></div>
+        </div>
       </div>
-      <div class="comp-card rv d2">
-        <div class="comp-ico">🌐</div>
-        <div class="comp-title">Interoperability Standards</div>
-        <div class="comp-desc">FHIR R4 data model ensures compliance with CMS Interoperability and Patient Access Rule (CMS-9115-F) and positions the platform for future FHIR-based prior auth mandates.</div>
+      <div class="stk-right">
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--mint)">3&times;</div><div class="kpi-label">Cases per reviewer per day</div><div class="kpi-note">30 cases/day today &rarr; 90 cases/day with LucidReview</div></div>
+        <div class="stk-kpi"><div class="kpi-val grad">~45%</div><div class="kpi-label">Cases auto-triaged before MD</div><div class="kpi-note">Algorithmic cases resolved without clinical escalation</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--amber)">6 mo &rarr; days</div><div class="kpi-label">New reviewer onboarding</div><div class="kpi-note">AI carries institutional knowledge &mdash; new staff are productive immediately</div></div>
+      </div>
+    </div>
+
+    <!-- CTO -->
+    <div class="stk-panel" id="panel-cto">
+      <div class="stk-left">
+        <div class="stk-role" style="color:var(--violet)">Chief Technology Officer</div>
+        <h3>Standards-first.<br><span class="grad">Audit-ready by design.</span></h3>
+        <p>LucidReview is not a black-box AI product. It is a standards-based platform built on FHIR R4, CQL 1.5, and HL7 Da Vinci PAS/CRD/DTR &mdash; the same standards CMS is mandating. Every determination is traceable to a FHIR resource, a CMS policy document, and a CQL criteria evaluation.</p>
+        <p>Because MHK already holds the data, the integration surface is minimal. There is no new data warehouse, no ETL pipeline, no shadow copy of member records.</p>
+        <div class="stk-pains">
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>FHIR R4 + Da Vinci PAS/CRD/DTR &mdash; CMS-0057-F compliant today</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>CQL criteria are compiled, unit-tested, and version-controlled &mdash; not prompt hacks</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>AWS Bedrock: HIPAA-eligible, no data leaves the cloud boundary</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>MCP tool architecture: modular, replaceable, auditable at each step</span></div>
+        </div>
+      </div>
+      <div class="stk-right">
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--violet)">FHIR R4</div><div class="kpi-label">Canonical data model</div><div class="kpi-note">US Core + Da Vinci PAS profiles &mdash; every resource is standards-compliant</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--cyan)">CQL 1.5</div><div class="kpi-label">Deterministic criteria evaluation</div><div class="kpi-note">Same standard powering CMS eCQMs &mdash; reproducible, auditable, portable</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--mint)">14 tools</div><div class="kpi-label">MCP agent architecture</div><div class="kpi-note">Every AI action is a traceable, logged tool call &mdash; not a black-box inference</div></div>
+      </div>
+    </div>
+
+    <!-- CIO -->
+    <div class="stk-panel" id="panel-cio">
+      <div class="stk-left">
+        <div class="stk-role" style="color:var(--cyan)">Chief Information Officer</div>
+        <h3>Data governance.<br><span class="grad">And a platform dividend.</span></h3>
+        <p>LucidReview operates on the data your plan already has &mdash; nothing leaves, nothing is duplicated, and every access is logged. But the more important story is what gets created: patient context intelligence that no other system in your stack is generating.</p>
+        <p>Every case LucidReview processes produces a structured clinical evidence record &mdash; FHIR resources, NLP extractions, criteria results, and provenance trails. That record is a platform asset your entire organization can use.</p>
+        <div class="stk-pains">
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>PHI never leaves your cloud boundary &mdash; HIPAA Technical Safeguards by design</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Immutable audit log: every agent action, tool call, and reviewer decision</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>Patient context by-product reusable by predictive analytics, risk stratification, care management</span></div>
+          <div class="stk-pain"><div class="sp-ico" style="background:var(--mint3);color:var(--mint)">&#10003;</div><span>MHK&rsquo;s existing data governance framework &mdash; no new vendor relationship to manage</span></div>
+        </div>
+      </div>
+      <div class="stk-right">
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--cyan)">Zero</div><div class="kpi-label">New data egress vectors</div><div class="kpi-note">LucidReview operates inside the data perimeter MHK already maintains</div></div>
+        <div class="stk-kpi"><div class="kpi-val grad">100%</div><div class="kpi-label">Audit log coverage</div><div class="kpi-note">Every AI action and reviewer decision is immutably logged for compliance</div></div>
+        <div class="stk-kpi"><div class="kpi-val" style="color:var(--violet)">Platform</div><div class="kpi-label">Patient context as a by-product</div><div class="kpi-note">Clinical intelligence generated by UM reviews feeds analytics, risk, and care management</div></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PLATFORM DIVIDEND -->
+<section class="sec sec-deep" id="platform">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">The Platform Dividend</div>
+      <h2 class="stitle">LucidReview isn&rsquo;t just a UM tool.<br><span class="grad">It&rsquo;s your clinical intelligence engine.</span></h2>
+      <p class="ssub">Every prior auth review generates structured patient evidence that the rest of your organization has never had access to. The by-product is the platform.</p>
+    </div>
+    <div class="div-flow rv">
+      <div class="flow-item"><div class="flow-dot"></div><span>Prior Auth Review</span></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item"><div class="flow-dot"></div><span>FHIR Clinical Evidence</span></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item"><div class="flow-dot"></div><span>NLP Entity Extraction</span></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item"><div class="flow-dot"></div><span>Structured Patient Context</span></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="color:var(--violet)"><div class="flow-dot" style="background:var(--violet)"></div><span>Platform Intelligence</span></div>
+    </div>
+    <div class="dividend-grid rv" style="margin-top:24px">
+      <div class="div-card">
+        <div class="div-ico">&#128202;</div>
+        <div class="div-title">Predictive Analytics</div>
+        <div class="div-body">The clinical evidence records from UM reviews &mdash; diagnoses, lab values, functional status, care patterns &mdash; feed predictive models for hospitalization risk, readmission likelihood, and chronic disease progression before they become authorizations.</div>
+        <div class="div-foot"><span class="code-tag">FHIR Observation</span><span class="code-tag">Risk Stratification</span></div>
+      </div>
+      <div class="div-card">
+        <div class="div-ico">&#127775;</div>
+        <div class="div-title">Care Management Intelligence</div>
+        <div class="div-body">Care managers gain structured, up-to-date clinical context on high-risk members without requesting charts. The same data that drives prior auth decisions enriches care coordination, gaps-in-care identification, and outreach prioritization.</div>
+        <div class="div-foot"><span class="code-tag">Care Coordination</span><span class="code-tag">Gaps in Care</span></div>
+      </div>
+      <div class="div-card">
+        <div class="div-ico">&#128196;</div>
+        <div class="div-title">Appeals Intelligence</div>
+        <div class="div-body">When a member appeals a denial, the complete evidence record &mdash; every document, every criteria evaluation, every reviewer note &mdash; is already structured and available. Appeal resolution time drops from days to hours.</div>
+        <div class="div-foot"><span class="code-tag">Audit Trail</span><span class="code-tag">Evidence Record</span></div>
+      </div>
+      <div class="div-card">
+        <div class="div-ico">&#128269;</div>
+        <div class="div-title">Quality & Compliance Reporting</div>
+        <div class="div-body">STAR ratings, HEDIS measures, and CMS audit responses all require structured clinical evidence. LucidReview generates this as a side effect of every review &mdash; turning compliance reporting from a quarterly scramble into a continuous feed.</div>
+        <div class="div-foot"><span class="code-tag">HEDIS</span><span class="code-tag">STAR Ratings</span><span class="code-tag">CMS Audit</span></div>
       </div>
     </div>
   </div>
@@ -964,73 +704,114 @@ footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
 
 <div class="divider"></div>
 
-<!-- ─── TECH STACK ─── -->
-<section class="sec sec-surf" style="padding:56px 0">
+<!-- ROI + COST OF INACTION -->
+<section class="sec" id="roi">
   <div class="wrap">
-    <div class="sh rv" style="margin-bottom:28px">
-      <div class="sec-label">Technology Stack</div>
+    <div class="sh rv">
+      <div class="sec-label">Return on Investment</div>
+      <h2 class="stitle">The numbers are real.<br><span class="grad">So is the cost of waiting.</span></h2>
     </div>
-    <div class="stack-row rv">
-      <div class="sk-pill"><span class="sk-ico">⚛️</span>React 19</div>
-      <div class="sk-pill"><span class="sk-ico">⚡</span>Fastify</div>
-      <div class="sk-pill"><span class="sk-ico">📘</span>TypeScript</div>
-      <div class="sk-pill"><span class="sk-ico">🤖</span>Claude Sonnet 4.6</div>
-      <div class="sk-pill"><span class="sk-ico">☁️</span>AWS Bedrock</div>
-      <div class="sk-pill"><span class="sk-ico">🏥</span>HAPI FHIR R4</div>
-      <div class="sk-pill"><span class="sk-ico">📐</span>CQL 1.5</div>
-      <div class="sk-pill"><span class="sk-ico">🧠</span>cTAKES / medspacy</div>
-      <div class="sk-pill"><span class="sk-ico">🗄️</span>MySQL 8</div>
-      <div class="sk-pill"><span class="sk-ico">⚡</span>Redis / BullMQ</div>
-      <div class="sk-pill"><span class="sk-ico">🔧</span>MCP Protocol</div>
-      <div class="sk-pill"><span class="sk-ico">🔄</span>TanStack Query</div>
-      <div class="sk-pill"><span class="sk-ico">🐋</span>Docker Compose</div>
-      <div class="sk-pill"><span class="sk-ico">🌿</span>Terraform</div>
+    <div class="roi-grid rv">
+      <div class="roi-card">
+        <div class="roi-val grad" data-count="80" data-suf="%">0</div>
+        <div class="roi-title">Reduction in review time</div>
+        <div class="roi-body">15 minutes per case today. 3&ndash;8 minutes with LucidReview. The same reviewer handles 3&times; the volume &mdash; without increased headcount.</div>
+      </div>
+      <div class="roi-card">
+        <div class="roi-val" style="color:var(--amber)">$1M+</div>
+        <div class="roi-title">Annual savings at a large MA plan</div>
+        <div class="roi-body">100K-member plan, 5,000 cases/month at $15&ndash;25 today vs. $3&ndash;8 with LucidReview. Net savings: $540K&ndash;$1.1M per year.</div>
+      </div>
+      <div class="roi-card">
+        <div class="roi-val" style="color:var(--mint)" data-count="40" data-suf="%">0</div>
+        <div class="roi-title">Reduction in appeal rate</div>
+        <div class="roi-body">Consistent, evidence-backed decisions with specific denial reasons dramatically reduce successful appeals &mdash; saving both reversal cost and reviewer time spent on re-reviews.</div>
+      </div>
+    </div>
+    <div class="inaction-box rv">
+      <div class="inaction-title">The cost of <span>not</span> doing this.</div>
+      <div class="inaction-grid">
+        <div class="ia-item"><div class="ia-ico">&#9679;</div><span><strong style="color:var(--t1)">Regulatory exposure:</strong> CMS-0057-F non-compliance starting 2026 &mdash; audits, corrective action plans, and CMS relationship damage.</span></div>
+        <div class="ia-item"><div class="ia-ico">&#9679;</div><span><strong style="color:var(--t1)">Workforce attrition:</strong> Every retiring reviewer takes institutional knowledge that cannot be rehired. The operational gap widens every quarter.</span></div>
+        <div class="ia-item"><div class="ia-ico">&#9679;</div><span><strong style="color:var(--t1)">Competitive disadvantage:</strong> Health plans deploying AI UM today will have 12&ndash;24 months of operational advantage over those who wait.</span></div>
+        <div class="ia-item"><div class="ia-ico">&#9679;</div><span><strong style="color:var(--t1)">Continued overspend:</strong> $45&ndash;200K per month in labor cost that could be redirected to clinical programs that actually improve member outcomes.</span></div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ─── CTA ─── -->
+<div class="divider"></div>
+
+<!-- THE FUTURE -->
+<section class="sec sec-dark" id="future">
+  <div class="wrap">
+    <div class="future-inner">
+      <div class="rv">
+        <div class="sec-label" style="text-align:center">MHK&rsquo;s AI-First Evolution</div>
+        <h2 class="future-head">
+          The future is agent-first.
+          <span class="future-serif"><span class="grad">We&rsquo;re already there.</span></span>
+        </h2>
+        <p class="future-body">MHK is reinventing itself as an AI-first, agent-first company. LucidReview is not a feature addition &mdash; it is the first production expression of that transformation. We are inviting our partners to step into the inevitable future alongside us.</p>
+      </div>
+      <div class="evolution-steps rv">
+        <div class="ev-step">
+          <div class="ev-era">MHK 1.0</div>
+          <div class="ev-title">Data Platform</div>
+          <div class="ev-body">System of record for member data, claims, authorizations, and clinical history across 30+ health plans.</div>
+        </div>
+        <div class="ev-step active-era">
+          <div class="ev-era">MHK 2.0 &mdash; Now</div>
+          <div class="ev-title">AI-First Platform</div>
+          <div class="ev-body">The data we hold becomes active intelligence. LucidReview is the first agent deployed on that foundation. More will follow.</div>
+        </div>
+        <div class="ev-step">
+          <div class="ev-era">MHK 3.0</div>
+          <div class="ev-title">Clinical Intelligence Network</div>
+          <div class="ev-body">Predictive analytics, risk stratification, care management AI &mdash; all built on the clinical context generated by agents like LucidReview.</div>
+        </div>
+      </div>
+      <div class="rv d1" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <span class="tag tc"><div class="pdot" style="margin-right:4px"></div>Currently deploying</span>
+        <span class="tag tm">30+ health plan clients</span>
+        <span class="tag ta">Innovation from within</span>
+        <span class="tag" style="color:var(--violet);border-color:rgba(139,92,246,.28);background:var(--violetD)">Agent-first architecture</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
 <section class="cta-sec" id="cta">
   <div class="cta-glow"></div>
   <div class="wrap">
-    <div class="sec-label rv">Get Started</div>
-    <h2 class="rv">Ready to modernize<br><span class="grad">utilization management?</span></h2>
-    <p class="rv d1">LucidReview is open-source and deployable with Docker Compose. Try the live deployment or explore the source on GitHub.</p>
+    <div class="sec-label rv" style="margin-bottom:18px">Join the Evolution</div>
+    <h2 class="rv">
+      Step into the<br>
+      <span class="si"><span class="grad">inevitable future.</span></span>
+    </h2>
+    <p class="rv d1">Your peers are already evaluating this. Your regulatory clock is already ticking. Your best reviewers won&rsquo;t work forever. The partner you already trust has built the answer. Let&rsquo;s talk.</p>
     <div class="cta-acts rv d2">
-      <a href="https://lucidreview.mhkdevsandbox.com/" class="btn-p" target="_blank" rel="noopener">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-        Try It Live
-      </a>
-      <a href="https://github.com/kkompalli/LucidReview" class="btn-s" target="_blank" rel="noopener">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        View on GitHub
-      </a>
-      <a href="#how-it-works" class="btn-s">How It Works</a>
+      <a href="https://lucidreview.mhkdevsandbox.com/" class="btn-p" target="_blank" rel="noopener">See LucidReview Live</a>
+      <button class="btn-s">Start the Conversation</button>
     </div>
+    <div class="cta-note rv d3">MHK &middot; 30+ Health Plan Clients &middot; HIPAA-Ready &middot; CMS-0057-F Compliant &middot; AWS Bedrock</div>
   </div>
 </section>
 
-<!-- ─── FOOTER ─── -->
 <footer>
   <div class="wrap">
     <div class="fi">
-      <div class="flogo"><div class="flm">LR</div><span class="flt">LucidReview</span></div>
-      <div class="flinks">
-        <a href="https://lucidreview.mhkdevsandbox.com/" target="_blank" rel="noopener">Live App</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="#architecture">Architecture</a>
-        <a href="#clinical">Clinical Standards</a>
-        <a href="https://github.com/kkompalli/LucidReview" target="_blank">GitHub</a>
-      </div>
-      <div class="fcopy">LLM-augmented Utilization Management · Claude on AWS Bedrock</div>
+      <div class="flogo"><div class="flm">LR</div><span class="flt">LucidReview by MHK</span></div>
+      <div class="fcopy">Confidential &middot; Internal Use Only &middot; March 2026</div>
     </div>
   </div>
 </footer>
 
-</div><!-- /pc -->
+</div>
 
 <script>
-/* ── Background particle canvas ── */
+/* Particle canvas */
 (function(){
   const c=document.getElementById('bgc'),ctx=c.getContext('2d');
   let W,H,nodes=[];
@@ -1051,52 +832,51 @@ footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
     requestAnimationFrame(draw);
   }
   resize();init();draw();
-  window.addEventListener('resize',()=>{resize()});
+  window.addEventListener('resize',resize);
 })();
 
-/* ── Nav scroll ── */
+/* Nav scroll */
 const nav=document.getElementById('mn');
 window.addEventListener('scroll',()=>nav.classList.toggle('sc',scrollY>40));
 
-/* ── Scroll reveal ── */
-const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target)}}),{threshold:.1});
+/* Scroll reveal */
+const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target)}}),{threshold:.08});
 document.querySelectorAll('.rv').forEach(el=>ro.observe(el));
 
-/* ── Counter animation ── */
+/* Counter animation */
 const co=new IntersectionObserver(es=>es.forEach(e=>{
   if(!e.isIntersecting)return;
   const el=e.target,tgt=+el.dataset.count,suf=el.dataset.suf||'';
   let t0=null;
-  (function step(ts){if(!t0)t0=ts;const p=Math.min((ts-t0)/1500,1),ease=1-Math.pow(1-p,3);el.textContent=Math.floor(ease*tgt)+suf;if(p<1)requestAnimationFrame(step);else el.textContent=tgt+suf})();
+  (function step(ts){
+    if(!t0)t0=ts;
+    const p=Math.min((ts-t0)/1500,1),ease=1-Math.pow(1-p,3);
+    el.textContent=Math.floor(ease*tgt).toLocaleString()+suf;
+    if(p<1)requestAnimationFrame(step);
+    else el.textContent=tgt.toLocaleString()+suf;
+  })(performance.now());
   co.unobserve(el);
 }),{threshold:.5});
 document.querySelectorAll('[data-count]').forEach(el=>co.observe(el));
 
-/* ── Hero pipeline loop ── */
-(function(){
-  const steps=document.querySelectorAll('#psteps .sr');
-  const box=document.getElementById('detbox');
-  let cur=4;
-  function advance(){
-    if(cur>=steps.length){box.style.opacity='1';setTimeout(reset,5000);return}
-    const s=steps[cur];s.classList.remove('active');s.classList.add('done');
-    const ss=s.querySelector('.ss');if(ss){ss.className='ss d';ss.textContent='DONE'}
-    cur++;
-    if(cur<steps.length){const n=steps[cur];n.classList.add('active');const ns=n.querySelector('.ss');if(ns){ns.className='ss a';ns.textContent='RUNNING'}}
-    setTimeout(advance,1100);
-  }
-  function reset(){
-    cur=0;box.style.opacity='.35';
-    steps.forEach((s,i)=>{
-      s.classList.remove('active','done');
-      const ss=s.querySelector('.ss');if(!ss)return;
-      if(i===0){s.classList.add('active');ss.className='ss a';ss.textContent='RUNNING'}
-      else{ss.className='ss p';ss.textContent='PENDING'}
-    });
-    setTimeout(advance,1100);
-  }
-  setTimeout(advance,1800);
-})();
+/* Stakeholder tabs */
+document.querySelectorAll('.stk-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    const role=tab.dataset.role;
+    document.querySelectorAll('.stk-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.stk-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    const panel=document.getElementById('panel-'+role);
+    if(panel){
+      panel.classList.add('active');
+      // re-trigger reveal for newly shown panel
+      panel.querySelectorAll('.stk-kpi').forEach((el,i)=>{
+        el.style.opacity='0';el.style.transform='translateY(16px)';
+        setTimeout(()=>{el.style.transition='opacity .4s ease, transform .4s ease';el.style.opacity='1';el.style.transform='none';},i*80);
+      });
+    }
+  });
+});
 </script>
 </body>
 </html>

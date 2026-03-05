@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LucidReview — AI-Powered Prior Authorization</title>
+<meta name="description" content="LucidReview automates utilization management prior authorization with Claude AI on AWS Bedrock — combining FHIR R4, NLP, and CQL-driven criteria evaluation to reach accurate determinations in seconds." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet" />
+<style>
+/* ═══════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════ */
+:root {
+  --bg0: #06090f;
+  --bg1: #0b1120;
+  --bg2: #111827;
+  --glass: rgba(11,17,32,0.72);
+  --bd0: rgba(255,255,255,0.05);
+  --bd1: rgba(255,255,255,0.11);
+  --bd2: rgba(255,255,255,0.18);
+  --cyan: #00d4f5;
+  --cyan2: rgba(0,212,245,0.15);
+  --cyan3: rgba(0,212,245,0.08);
+  --mint: #00e5a0;
+  --mint2: rgba(0,229,160,0.14);
+  --mint3: rgba(0,229,160,0.07);
+  --amber: #f5a623;
+  --red: #f56342;
+  --violet: #8b5cf6;
+  --t1: #eef2ff;
+  --t2: #8899b4;
+  --t3: #4a5568;
+  --fd: 'Sora', sans-serif;
+  --fs: 'DM Serif Display', serif;
+  --fb: 'Plus Jakarta Sans', sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+  --r1: 6px; --r2: 12px; --r3: 20px; --r4: 32px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg0);color:var(--t1);font-family:var(--fb);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* ─── Canvas bg ─── */
+#bgc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3}
+.pc{position:relative;z-index:1}
+
+/* ─── Layout ─── */
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--bd1),transparent)}
+
+/* ─── Typography ─── */
+h1,h2,h3{font-family:var(--fd);line-height:1.12;letter-spacing:-0.02em}
+.serif{font-family:var(--fs);font-style:italic;font-weight:400}
+.grad{background:linear-gradient(130deg,var(--cyan) 0%,var(--mint) 55%,#6be8ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* ─── Tags / pills ─── */
+.tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--fm);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 11px;border-radius:100px;border:1px solid}
+.tc{color:var(--cyan);border-color:rgba(0,212,245,.28);background:var(--cyan3)}
+.tm{color:var(--mint);border-color:rgba(0,229,160,.28);background:var(--mint3)}
+.ta{color:var(--amber);border-color:rgba(245,166,35,.28);background:rgba(245,166,35,.08)}
+.code-tag{font-family:var(--fm);font-size:10px;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--bd0);color:var(--t3)}
+.sec-label{font-family:var(--fm);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+
+/* ─── Buttons ─── */
+.btn-p{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;background:linear-gradient(135deg,var(--cyan),var(--mint));color:#06090f;font-weight:700;font-size:14.5px;border-radius:100px;text-decoration:none;transition:opacity .2s,transform .2s,box-shadow .2s;box-shadow:0 4px 24px rgba(0,212,245,.22)}
+.btn-p:hover{opacity:.9;transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,212,245,.32)}
+.btn-s{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;color:var(--t1);font-weight:600;font-size:14.5px;border-radius:100px;text-decoration:none;border:1px solid var(--bd1);transition:background .2s,border-color .2s;background:rgba(255,255,255,.04)}
+.btn-s:hover{background:rgba(255,255,255,.08);border-color:var(--bd2)}
+
+/* ─── Reveal animation ─── */
+.rv{opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.rv.vis{opacity:1;transform:none}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}
+
+/* ═══════════════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════════════ */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:15px 0;transition:background .3s,border-color .3s}
+nav.sc{background:rgba(6,9,15,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd0)}
+.ni{display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.lm{width:32px;height:32px;background:linear-gradient(135deg,var(--cyan),var(--mint));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:13px;color:#06090f;flex-shrink:0}
+.lt{font-family:var(--fd);font-weight:700;font-size:18px;color:var(--t1)}
+.nl{display:flex;align-items:center;gap:28px;list-style:none}
+.nl a{text-decoration:none;color:var(--t2);font-size:14px;font-weight:500;transition:color .2s}
+.nl a:hover{color:var(--t1)}
+.nc-cta{display:inline-flex;align-items:center;gap:7px;padding:8px 18px;background:linear-gradient(135deg,var(--cyan),var(--mint));color:#06090f;font-weight:700;font-size:13px;border-radius:100px;text-decoration:none;transition:opacity .2s,transform .2s}
+.nc-cta:hover{opacity:.9;transform:translateY(-1px)}
+
+/* ═══════════════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════════════ */
+.hero{min-height:100vh;display:flex;align-items:center;padding:120px 0 80px;position:relative}
+.hg{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.heyebrow{display:flex;gap:8px;margin-bottom:26px}
+.hhead{font-size:clamp(40px,5vw,62px);font-weight:800;margin-bottom:22px}
+.hhead .si{font-family:var(--fs);font-style:italic;font-weight:400;background:linear-gradient(130deg,var(--cyan),var(--mint));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hsub{font-size:17px;color:var(--t2);line-height:1.75;margin-bottom:38px;max-width:510px;font-weight:300}
+.ha{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:44px}
+.htrust{display:flex;align-items:center;gap:16px;font-size:12.5px;color:var(--t3);flex-wrap:wrap}
+.htrust span{color:var(--t2)}
+
+/* Hero pipeline card */
+.hv{position:relative}
+.pc-wrap{background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--bd0);border-radius:var(--r3);padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 48px rgba(0,212,245,.1);position:relative;overflow:hidden}
+.pc-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 0%,rgba(0,212,245,.07),transparent 60%);pointer-events:none}
+.pc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--bd0)}
+.pc-title{font-family:var(--fm);font-size:11.5px;color:var(--t2)}
+.pc-badge{display:flex;align-items:center;gap:5px;font-family:var(--fm);font-size:10px;color:var(--mint);padding:3px 9px;background:var(--mint3);border-radius:100px;border:1px solid rgba(0,229,160,.2)}
+.pdot{width:6px;height:6px;background:var(--mint);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+.psteps{display:flex;flex-direction:column;gap:8px}
+.sr{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r1);background:rgba(255,255,255,.02);border:1px solid transparent;transition:all .3s}
+.sr.active{background:rgba(0,212,245,.06);border-color:rgba(0,212,245,.18)}
+.sr.done{background:rgba(0,229,160,.04);border-color:rgba(0,229,160,.1)}
+.si2{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.sinfo{flex:1}
+.sname{font-size:11.5px;font-weight:600;color:var(--t1);font-family:var(--fm)}
+.sdet{font-size:10px;color:var(--t3);margin-top:1px}
+.ss{font-family:var(--fm);font-size:9.5px;padding:3px 7px;border-radius:100px}
+.ss.d{color:var(--mint);background:var(--mint3)}
+.ss.a{color:var(--cyan);background:var(--cyan3);animation:flk 1.5s infinite}
+.ss.p{color:var(--t3);background:rgba(255,255,255,.04)}
+@keyframes flk{0%,100%{opacity:1}50%{opacity:.55}}
+.detbox{margin-top:14px;padding:12px 14px;background:linear-gradient(135deg,rgba(0,229,160,.08),rgba(0,212,245,.05));border:1px solid rgba(0,229,160,.22);border-radius:var(--r2);display:flex;align-items:center;justify-content:space-between;transition:opacity .8s ease}
+.dl{font-family:var(--fm);font-size:10px;color:var(--t3)}
+.dv{font-family:var(--fd);font-size:13px;font-weight:700;color:var(--mint)}
+.dc{font-family:var(--fm);font-size:11px;color:var(--t2)}
+
+/* Floating cards */
+.fc{position:absolute;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--bd0);border-radius:var(--r2);padding:11px 14px;font-size:11.5px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.fc.top{top:-26px;right:-18px;animation:fl2 6s ease-in-out infinite}
+.fc.bot{bottom:-22px;left:-18px;animation:fl2 6s ease-in-out infinite 2s}
+@keyframes fl2{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.fcl{font-family:var(--fm);font-size:9px;color:var(--t3);margin-bottom:3px}
+.fcv{font-weight:700;color:var(--t1)}
+.fcs{color:var(--t2);font-size:10px}
+
+/* ═══════════════════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════════════════ */
+.stats-bar{padding:28px 0;border-top:1px solid var(--bd0);border-bottom:1px solid var(--bd0);background:linear-gradient(90deg,transparent,rgba(0,212,245,.025),transparent)}
+.sg{display:grid;grid-template-columns:repeat(4,1fr)}
+.si3{text-align:center;padding:6px 16px;border-right:1px solid var(--bd0)}
+.si3:last-child{border-right:none}
+.snum{font-family:var(--fd);font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1;margin-bottom:5px}
+.slab{font-size:13px;color:var(--t2);font-weight:400}
+
+/* ═══════════════════════════════════════════════════════
+   SECTIONS
+═══════════════════════════════════════════════════════ */
+.sec{padding:92px 0}
+.sec-dark{background:linear-gradient(180deg,var(--bg0) 0%,var(--bg1) 50%,var(--bg0) 100%)}
+.sec-surf{background:var(--bg1);border-top:1px solid var(--bd0);border-bottom:1px solid var(--bd0)}
+.sh{text-align:center;margin-bottom:60px}
+.stitle{font-size:clamp(30px,3.5vw,46px);font-weight:800;margin-bottom:14px}
+.ssub{font-size:17px;color:var(--t2);font-weight:300;max-width:580px;margin:0 auto;line-height:1.75}
+
+/* ═══════════════════════════════════════════════════════
+   PROBLEM
+═══════════════════════════════════════════════════════ */
+.prob-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.pstats{display:flex;flex-direction:column;gap:18px}
+.pcard{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r2);padding:22px;position:relative;overflow:hidden}
+.pcard::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--red)}
+.pcard.warn::after{background:var(--amber)}
+.pnum{font-family:var(--fd);font-size:40px;font-weight:800;letter-spacing:-.02em;color:var(--red);line-height:1}
+.pnum.w{color:var(--amber)}
+.pdesc{font-size:13px;color:var(--t2);margin-top:5px}
+.ptxt h3{font-size:27px;font-weight:700;margin-bottom:14px}
+.ptxt p{color:var(--t2);font-size:15px;line-height:1.78;margin-bottom:14px;font-weight:300}
+.pbullets{list-style:none;display:flex;flex-direction:column;gap:11px;margin-top:22px}
+.pbullets li{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--t2)}
+.bico{width:18px;height:18px;border-radius:50%;background:var(--mint3);border:1px solid rgba(0,229,160,.25);display:flex;align-items:center;justify-content:center;color:var(--mint);font-size:9px;flex-shrink:0;margin-top:1px}
+
+/* ═══════════════════════════════════════════════════════
+   PIPELINE / HOW IT WORKS
+═══════════════════════════════════════════════════════ */
+.wf-wrap{position:relative;max-width:780px;margin:0 auto;padding:32px 0}
+.wf-wrap::before{content:'';position:absolute;left:27px;top:20px;bottom:20px;width:1px;background:linear-gradient(180deg,rgba(0,212,245,.5),rgba(0,229,160,.4),transparent)}
+.wf-step{display:grid;grid-template-columns:56px 1fr;gap:22px;align-items:flex-start;padding:14px 0}
+.wfn{width:56px;height:56px;border-radius:var(--r2);border:1px solid var(--bd1);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:17px;color:var(--cyan);flex-shrink:0;position:relative;z-index:1;transition:background .3s,border-color .3s}
+.wf-step:hover .wfn{background:var(--cyan3);border-color:var(--cyan)}
+.wfb{padding:6px 0}
+.wft{font-size:16px;font-weight:700;margin-bottom:6px;font-family:var(--fd)}
+.wfd{font-size:14px;color:var(--t2);line-height:1.68;font-weight:300;margin-bottom:9px}
+.wftags{display:flex;gap:5px;flex-wrap:wrap}
+
+/* ═══════════════════════════════════════════════════════
+   FEATURES
+═══════════════════════════════════════════════════════ */
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.fcard{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:26px;transition:border-color .3s,background .3s,transform .3s;position:relative;overflow:hidden}
+.fcard::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;background:radial-gradient(ellipse at 50% 0%,rgba(0,212,245,.07),transparent 65%);pointer-events:none}
+.fcard:hover{border-color:rgba(0,212,245,.22);background:var(--bg2);transform:translateY(-4px)}
+.fcard:hover::before{opacity:1}
+.fico{width:42px;height:42px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:18px}
+.ftitle{font-size:16px;font-weight:700;margin-bottom:9px;font-family:var(--fd)}
+.fdesc{font-size:13.5px;color:var(--t2);line-height:1.68;font-weight:300}
+.ffoot{margin-top:14px;padding-top:14px;border-top:1px solid var(--bd0);display:flex;gap:5px;flex-wrap:wrap}
+
+/* ═══════════════════════════════════════════════════════
+   ARCHITECTURE
+═══════════════════════════════════════════════════════ */
+.arch-box-wrap{background:var(--bg0);border:1px solid var(--bd0);border-radius:var(--r4);padding:36px;position:relative;overflow:hidden}
+.arch-box-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,212,245,.04),transparent 65%);pointer-events:none}
+.arch-rows{display:flex;flex-direction:column;gap:28px;position:relative;z-index:1}
+.arch-rl{font-family:var(--fm);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+.arch-ri{display:flex;gap:10px;flex-wrap:wrap}
+.arch-b{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:12px 16px;flex:1;min-width:130px;transition:border-color .2s,background .2s}
+.arch-b:hover{border-color:var(--bd1);background:rgba(255,255,255,.05)}
+.arch-b.ac{border-color:rgba(0,212,245,.22);background:rgba(0,212,245,.05)}
+.arch-b.am{border-color:rgba(0,229,160,.22);background:rgba(0,229,160,.05)}
+.arch-b.av{border-color:rgba(139,92,246,.22);background:rgba(139,92,246,.05)}
+.arch-bico{font-size:18px;margin-bottom:6px}
+.arch-bname{font-size:12.5px;font-weight:700;font-family:var(--fd)}
+.arch-bdet{font-size:10px;color:var(--t3);margin-top:2px;font-family:var(--fm)}
+.arch-arr{display:flex;justify-content:center;color:var(--t3);font-size:18px;margin:-10px 0}
+
+/* ═══════════════════════════════════════════════════════
+   CLINICAL STANDARDS
+═══════════════════════════════════════════════════════ */
+.std-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.std-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:26px;display:flex;gap:18px;align-items:flex-start;transition:border-color .3s}
+.std-card:hover{border-color:var(--bd1)}
+.std-ico{width:46px;height:46px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.std-body h3{font-size:16px;font-weight:700;margin-bottom:7px}
+.std-body p{font-size:13px;color:var(--t2);line-height:1.65;font-weight:300}
+.std-codes{display:flex;gap:5px;flex-wrap:wrap;margin-top:11px}
+
+/* ═══════════════════════════════════════════════════════
+   DETERMINATION OUTCOMES
+═══════════════════════════════════════════════════════ */
+.det-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.det-card{border-radius:var(--r3);padding:22px;border:1px solid;transition:transform .3s}
+.det-card:hover{transform:translateY(-3px)}
+.det-card.ap{background:rgba(0,229,160,.06);border-color:rgba(0,229,160,.24)}
+.det-card.rv{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.24)}
+.det-card.mi{background:rgba(0,212,245,.06);border-color:rgba(0,212,245,.24)}
+.det-card.dn{background:rgba(245,99,66,.06);border-color:rgba(245,99,66,.24)}
+.det-ico{font-size:26px;margin-bottom:11px}
+.det-name{font-size:13px;font-weight:700;font-family:var(--fm);margin-bottom:7px}
+.det-card.ap .det-name{color:var(--mint)}
+.det-card.rv .det-name{color:var(--amber)}
+.det-card.mi .det-name{color:var(--cyan)}
+.det-card.dn .det-name{color:var(--red)}
+.det-rule{font-size:12.5px;color:var(--t2);line-height:1.6;font-weight:300}
+.det-conf{font-family:var(--fm);font-size:10px;color:var(--t3);margin-top:10px}
+
+/* ═══════════════════════════════════════════════════════
+   UI MOCKUP
+═══════════════════════════════════════════════════════ */
+.mockup{background:var(--bg0);border:1px solid var(--bd0);border-radius:var(--r4);overflow:hidden;box-shadow:0 48px 96px rgba(0,0,0,.65)}
+.mb-bar{background:var(--bg1);padding:11px 18px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--bd0)}
+.mb-dot{width:10px;height:10px;border-radius:50%}
+.mb-url{background:rgba(255,255,255,.04);border:1px solid var(--bd0);border-radius:5px;padding:3px 11px;font-family:var(--fm);font-size:10.5px;color:var(--t3);margin-left:6px;flex:1;max-width:300px}
+.mb-body{display:grid;grid-template-columns:220px 1fr 280px;min-height:420px}
+.mb-sidebar{background:var(--bg1);border-right:1px solid var(--bd0);padding:18px 14px}
+.mb-slogo{display:flex;align-items:center;gap:8px;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--bd0)}
+.mb-slm{width:22px;height:22px;background:linear-gradient(135deg,var(--cyan),var(--mint));border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#06090f}
+.mb-slt{font-size:13px;font-weight:700}
+.mb-nav{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--r1);font-size:11.5px;color:var(--t2);margin-bottom:3px}
+.mb-nav.act{background:var(--cyan3);color:var(--cyan)}
+.mb-main{padding:18px;overflow:hidden}
+.mb-ch{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.mb-cid{font-family:var(--fm);font-size:10.5px;color:var(--t3)}
+.mb-cdx{font-size:14px;font-weight:700;margin-top:2px}
+.mb-sbadge{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:100px;background:var(--cyan3);color:var(--cyan);border:1px solid rgba(0,212,245,.24)}
+.mb-trace{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:13px;margin-bottom:12px}
+.mb-ttitle{font-size:10.5px;font-family:var(--fm);color:var(--t3);margin-bottom:9px}
+.tr-row{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:10.5px;border-bottom:1px solid var(--bd0)}
+.tr-row:last-child{border-bottom:none}
+.trd{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.trd.d{background:var(--mint)}
+.trd.a{background:var(--cyan);animation:pulse 1.5s infinite}
+.trd.p{background:var(--t3)}
+.trn{flex:1;color:var(--t2)}
+.trl{font-family:var(--fm);font-size:9.5px;color:var(--t3)}
+.mb-crit{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:13px}
+.mb-ctitle{font-size:10.5px;font-family:var(--fm);color:var(--t3);margin-bottom:9px}
+.cr-row{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:10.5px;border-bottom:1px solid var(--bd0)}
+.cr-row:last-child{border-bottom:none}
+.crck{width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8.5px;flex-shrink:0}
+.crck.met{background:var(--mint3);color:var(--mint);border:1px solid rgba(0,229,160,.28)}
+.crck.unmet{background:rgba(245,99,66,.1);color:var(--red);border:1px solid rgba(245,99,66,.28)}
+.crck.unk{background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.28)}
+.crtxt{flex:1;color:var(--t2)}
+.crev{font-family:var(--fm);font-size:9px;color:var(--cyan)}
+.mb-right{border-left:1px solid var(--bd0);padding:18px;display:flex;flex-direction:column;gap:13px}
+.mb-pc{background:var(--bg2);border:1px solid var(--bd0);border-radius:var(--r2);padding:13px}
+.mb-pt{font-size:10.5px;font-family:var(--fm);color:var(--t3);margin-bottom:9px}
+.pr-row{display:flex;justify-content:space-between;font-size:10.5px;padding:3.5px 0;border-bottom:1px solid var(--bd0)}
+.pr-row:last-child{border-bottom:none}
+.prk{color:var(--t3)}
+.prv{color:var(--t2);font-weight:500}
+.mb-det{background:linear-gradient(135deg,rgba(0,229,160,.09),rgba(0,212,245,.06));border:1px solid rgba(0,229,160,.24);border-radius:var(--r2);padding:14px;text-align:center;margin-top:auto}
+.mb-dl{font-size:9.5px;font-family:var(--fm);color:var(--t3);margin-bottom:7px}
+.mb-dv{font-size:17px;font-weight:800;color:var(--mint);font-family:var(--fd)}
+.mb-dc{font-size:10.5px;color:var(--t2);margin-top:3px;font-family:var(--fm)}
+.mb-dbtn{margin-top:11px;width:100%;padding:8px;background:var(--mint);color:#06090f;font-weight:700;font-size:11.5px;border-radius:7px;border:none;font-family:var(--fd);cursor:default}
+
+/* ═══════════════════════════════════════════════════════
+   SECURITY
+═══════════════════════════════════════════════════════ */
+.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.comp-card{background:var(--bg1);border:1px solid var(--bd0);border-radius:var(--r3);padding:22px;text-align:center;transition:border-color .3s}
+.comp-card:hover{border-color:var(--bd1)}
+.comp-ico{font-size:30px;margin-bottom:11px}
+.comp-title{font-size:15px;font-weight:700;margin-bottom:7px}
+.comp-desc{font-size:13px;color:var(--t2);line-height:1.65;font-weight:300}
+
+/* ═══════════════════════════════════════════════════════
+   TECH STACK
+═══════════════════════════════════════════════════════ */
+.stack-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.sk-pill{display:flex;align-items:center;gap:7px;padding:9px 16px;background:var(--bg1);border:1px solid var(--bd0);border-radius:100px;font-size:12.5px;font-weight:500;transition:border-color .2s,background .2s}
+.sk-pill:hover{border-color:var(--bd1);background:var(--bg2)}
+.sk-ico{font-size:15px}
+
+/* ═══════════════════════════════════════════════════════
+   CTA
+═══════════════════════════════════════════════════════ */
+.cta-sec{padding:112px 0;text-align:center;position:relative;overflow:hidden}
+.cta-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,212,245,.09),transparent 70%);pointer-events:none}
+.cta-sec h2{font-size:clamp(34px,5vw,54px);font-weight:800;margin-bottom:18px}
+.cta-sec p{font-size:17px;color:var(--t2);font-weight:300;max-width:500px;margin:0 auto 36px;line-height:1.75}
+.cta-acts{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+/* ═══════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════ */
+footer{background:var(--bg1);border-top:1px solid var(--bd0);padding:44px 0}
+.fi{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
+.flogo{display:flex;align-items:center;gap:9px}
+.flm{width:26px;height:26px;background:linear-gradient(135deg,var(--cyan),var(--mint));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#06090f}
+.flt{font-size:15px;font-weight:700}
+.flinks{display:flex;gap:22px}
+.flinks a{text-decoration:none;color:var(--t3);font-size:13px;transition:color .2s}
+.flinks a:hover{color:var(--t2)}
+.fcopy{font-size:11.5px;color:var(--t3)}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════ */
+@media(max-width:1024px){
+  .hg{grid-template-columns:1fr;gap:44px}
+  .hv{display:none}
+  .fgrid{grid-template-columns:repeat(2,1fr)}
+  .det-grid{grid-template-columns:repeat(2,1fr)}
+  .mb-body{grid-template-columns:1fr}
+  .mb-sidebar,.mb-right{display:none}
+  .std-grid{grid-template-columns:1fr}
+  .comp-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .fgrid{grid-template-columns:1fr}
+  .prob-grid{grid-template-columns:1fr}
+  .arch-ri{flex-direction:column}
+  .sg{grid-template-columns:repeat(2,1fr)}
+  .det-grid{grid-template-columns:1fr}
+  .comp-grid{grid-template-columns:1fr}
+  .nl{display:none}
+  .sec{padding:64px 0}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bgc"></canvas>
+
+<div class="pc">
+
+<!-- ─── NAV ─── -->
+<nav id="mn">
+  <div class="wrap">
+    <div class="ni">
+      <a href="#" class="logo">
+        <div class="lm">LR</div>
+        <span class="lt">LucidReview</span>
+      </a>
+      <ul class="nl">
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#clinical">Clinical Standards</a></li>
+        <li><a href="#security">Security</a></li>
+      </ul>
+      <a href="https://lucidreview.mhkdevsandbox.com/" class="nc-cta" target="_blank" rel="noopener">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        Live Demo
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hg">
+      <div>
+        <div class="heyebrow">
+          <span class="tag tc">✦ Utilization Management AI</span>
+          <span class="tag tm">HIPAA-Ready</span>
+        </div>
+        <h1 class="hhead">
+          Prior Authorization,<br>
+          <span class="si">Reimagined</span><br>
+          with Clinical AI
+        </h1>
+        <p class="hsub">LucidReview automates insurance coverage reviews using Claude AI on AWS Bedrock — combining FHIR&nbsp;R4 clinical data, NLP evidence extraction, and CQL-driven criteria evaluation to reach accurate determinations in seconds, not days.</p>
+        <div class="ha">
+          <a href="https://lucidreview.mhkdevsandbox.com/" class="btn-p" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            Try It Live
+          </a>
+          <a href="#how-it-works" class="btn-s">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.5 8.5l-5 3a.5.5 0 01-.75-.43V5a.5.5 0 01.75-.43l5 3a.5.5 0 010 .86z"/></svg>
+            See How It Works
+          </a>
+          <a href="https://github.com/kkompalli/LucidReview" class="btn-s" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </div>
+        <div class="htrust">
+          <span>Built on</span>
+          <span>Claude Sonnet 4.6 · AWS Bedrock</span>
+          <span>·</span><span>FHIR R4</span>
+          <span>·</span><span>CQL 1.5</span>
+          <span>·</span><span>TypeScript</span>
+        </div>
+      </div>
+
+      <!-- Hero pipeline visual -->
+      <div class="hv">
+        <div class="fc top">
+          <div class="fcl">Policy Matched</div>
+          <div class="fcv">NCD 240.0</div>
+          <div class="fcs">Oxygen Therapy · 8 criteria</div>
+        </div>
+
+        <div class="pc-wrap">
+          <div class="pc-hdr">
+            <span class="pc-title">Agent Run · ARF-2026-001</span>
+            <div class="pc-badge"><div class="pdot"></div>Processing</div>
+          </div>
+          <div class="psteps" id="psteps">
+            <div class="sr done"><div class="si2" style="background:var(--cyan3)">🔍</div><div class="sinfo"><div class="sname">fetch_case_data</div><div class="sdet">J96.00 · INPATIENT · URGENT</div></div><span class="ss d">DONE</span></div>
+            <div class="sr done"><div class="si2" style="background:var(--cyan3)">📄</div><div class="sinfo"><div class="sname">extract_clinical_docs</div><div class="sdet">3 PDFs · AWS Textract</div></div><span class="ss d">DONE</span></div>
+            <div class="sr done"><div class="si2" style="background:rgba(245,166,35,.1)">🧠</div><div class="sinfo"><div class="sname">run_nlp_extraction</div><div class="sdet">SpO₂ 87% · PaO₂ 55 mmHg</div></div><span class="ss d">DONE</span></div>
+            <div class="sr done"><div class="si2" style="background:var(--mint3)">⚕️</div><div class="sinfo"><div class="sname">normalize_to_fhir</div><div class="sdet">Bundle · 12 resources</div></div><span class="ss d">DONE</span></div>
+            <div class="sr active"><div class="si2" style="background:var(--cyan3)">📋</div><div class="sinfo"><div class="sname">evaluate_cql_criteria</div><div class="sdet">NCD 240.0 · 8 criteria</div></div><span class="ss a">RUNNING</span></div>
+            <div class="sr"><div class="si2" style="background:rgba(255,255,255,.03)">⚖️</div><div class="sinfo"><div class="sname">propose_determination</div><div class="sdet">Pending CQL results</div></div><span class="ss p">PENDING</span></div>
+          </div>
+          <div class="detbox" id="detbox" style="opacity:.35">
+            <div><div class="dl">Determination</div><div class="dv">AUTO_APPROVE</div></div>
+            <div class="dc">Confidence: 95%</div>
+          </div>
+        </div>
+
+        <div class="fc bot">
+          <div class="fcl">FHIR Observation</div>
+          <div class="fcv">SpO₂ 87%</div>
+          <div class="fcs">LOINC: 59408-5 · Affirmed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STATS ─── -->
+<div class="stats-bar">
+  <div class="wrap">
+    <div class="sg">
+      <div class="si3 rv">
+        <div class="snum grad" data-count="80" data-suf="%">0%</div>
+        <div class="slab">reduction in review time</div>
+      </div>
+      <div class="si3 rv d1">
+        <div class="snum grad" data-count="95" data-suf="%">0%</div>
+        <div class="slab">AI confidence on auto-approvals</div>
+      </div>
+      <div class="si3 rv d2">
+        <div class="snum" style="color:var(--cyan)">14</div>
+        <div class="slab">MCP tools in agent</div>
+      </div>
+      <div class="si3 rv d3">
+        <div class="snum" style="color:var(--mint)">218</div>
+        <div class="slab">tests passing</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── PROBLEM ─── -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">The Challenge</div>
+      <h2 class="stitle">Prior auth is <span class="grad">broken.</span></h2>
+      <p class="ssub">Manual utilization management creates friction that delays care, exhausts clinical staff, and drives up administrative costs across the healthcare system.</p>
+    </div>
+    <div class="prob-grid">
+      <div class="pstats">
+        <div class="pcard rv">
+          <div class="pnum">94%</div>
+          <div class="pdesc">of physicians report care delays due to prior authorization requirements (AMA, 2023)</div>
+        </div>
+        <div class="pcard warn rv d1">
+          <div class="pnum w">$31B</div>
+          <div class="pdesc">spent annually on prior authorization administrative costs in the U.S.</div>
+        </div>
+        <div class="pcard rv d2">
+          <div class="pnum">3 days</div>
+          <div class="pdesc">average manual review time — LucidReview brings this under 30 seconds</div>
+        </div>
+      </div>
+      <div class="ptxt rv d1">
+        <h3>Reviewers are drowning in complexity</h3>
+        <p>Utilization management nurses and medical directors must manually cross-reference hundreds of clinical criteria across NCDs, LCDs, and payer-specific policies — while juggling incomplete documentation, fax-based records, and urgent inpatient requests.</p>
+        <p>Traditional rule engines miss context buried in unstructured notes, fail to normalize across code systems, and can't explain their reasoning to appeal boards.</p>
+        <ul class="pbullets">
+          <li><div class="bico">✓</div><span>LucidReview reads and understands unstructured clinical documents via NLP</span></li>
+          <li><div class="bico">✓</div><span>Normalizes all evidence to FHIR R4 for consistent criteria evaluation</span></li>
+          <li><div class="bico">✓</div><span>Executes criteria as executable CQL — no ambiguous rule interpretation</span></li>
+          <li><div class="bico">✓</div><span>Provides full audit trail: every evidence link, every tool call, every decision</span></li>
+          <li><div class="bico">✓</div><span>Conservative logic routes uncertain cases to physician review — never guesses</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── HOW IT WORKS ─── -->
+<section class="sec sec-dark" id="how-it-works">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">The Agent Pipeline</div>
+      <h2 class="stitle">8 steps from <span class="grad">case to determination</span></h2>
+      <p class="ssub">A Claude AI agent orchestrates the entire review workflow autonomously — gathering evidence, normalizing data, executing clinical logic, and proposing a defensible determination.</p>
+    </div>
+    <div class="wf-wrap">
+
+      <div class="wf-step rv">
+        <div class="wfn">01</div>
+        <div class="wfb">
+          <div class="wft">Case Data Retrieval</div>
+          <div class="wfd">The agent fetches the full case record from the UM system — patient demographics, ICD-10/CPT codes, service type (inpatient/outpatient/DME/home health), urgency flag, and member coverage verification.</div>
+          <div class="wftags"><span class="code-tag">fetch_case_data</span><span class="code-tag">ICD-10</span><span class="code-tag">CPT/HCPCS</span><span class="code-tag">REST API</span></div>
+        </div>
+      </div>
+
+      <div class="wf-step rv d1">
+        <div class="wfn">02</div>
+        <div class="wfb">
+          <div class="wft">Clinical Document Extraction</div>
+          <div class="wfd">Attached clinical documents (H&amp;P, progress notes, lab reports, imaging) are extracted via pdf-parse. Scanned or image-based PDFs fall back to AWS Textract OCR for full-text extraction.</div>
+          <div class="wftags"><span class="code-tag">extract_pdf_text</span><span class="code-tag">AWS Textract</span><span class="code-tag">OCR fallback</span></div>
+        </div>
+      </div>
+
+      <div class="wf-step rv d2">
+        <div class="wfn">03</div>
+        <div class="wfb">
+          <div class="wft">NLP Entity Extraction</div>
+          <div class="wfd">Clinical NLP (cTAKES/medspacy) extracts structured entities from unstructured text: diagnoses with assertion context (affirmed/negated/uncertain), vital signs, lab values, medications, and procedures — each tagged with temporality (recent vs. historical).</div>
+          <div class="wftags"><span class="code-tag">run_nlp_extraction</span><span class="code-tag">cTAKES</span><span class="code-tag">medspacy</span><span class="code-tag">SNOMED</span><span class="code-tag">LOINC</span></div>
+        </div>
+      </div>
+
+      <div class="wf-step rv">
+        <div class="wfn">04</div>
+        <div class="wfb">
+          <div class="wft">FHIR R4 Normalization</div>
+          <div class="wfd">All extracted clinical evidence is normalized into a FHIR R4 Bundle and persisted to HAPI FHIR server — creating Patient, Encounter, Condition, Observation, Procedure, MedicationRequest, and DocumentReference resources with proper code system bindings.</div>
+          <div class="wftags"><span class="code-tag">create_fhir_bundle</span><span class="code-tag">HAPI FHIR R4</span><span class="code-tag">ICD-10-CM</span><span class="code-tag">RxNorm</span></div>
+        </div>
+      </div>
+
+      <div class="wf-step rv d1">
+        <div class="wfn">05</div>
+        <div class="wfb">
+          <div class="wft">Policy Matching</div>
+          <div class="wfd">The agent queries the policy library to find all applicable coverage policies for the case's diagnosis codes and service type — matching against NCDs, LCDs, and internal payer policies with ranked relevance scores.</div>
+          <div class="wftags"><span class="code-tag">lookup_policies</span><span class="code-tag">NCD</span><span class="code-tag">LCD</span><span class="code-tag">Internal</span></div>
+        </div>
+      </div>
+
+      <div class="wf-step rv d2">
+        <div class="wfn">06</div>
+        <div class="wfb">
+          <div class="wft">CQL Criteria Evaluation</div>
+          <div class="wfd">Coverage criteria are evaluated as executable Clinical Quality Language (CQL) expressions against the FHIR data in HAPI FHIR's Clinical Reasoning module — producing a definitive MET / NOT_MET / UNKNOWN result for each individual criterion with evidence citations.</div>
+          <div class="wftags"><span class="code-tag">evaluate_cql</span><span class="code-tag">CQL 1.5</span><span class="code-tag">HAPI FHIR CRM</span><span class="code-tag">AND/OR trees</span></div>
+        </div>
+      </div>
+
+      <div class="wf-step rv">
+        <div class="wfn">07</div>
+        <div class="wfb">
+          <div class="wft">Determination Logic</div>
+          <div class="wfd">Conservative deterministic logic counts criterion outcomes: all MET → AUTO_APPROVE; any NOT_MET → MD_REVIEW; any UNKNOWN → MORE_INFO. The LLM summarizes rationale but never overrides deterministic logic — ensuring reproducibility and auditability.</div>
+          <div class="wftags"><span class="code-tag">propose_determination</span><span class="code-tag">AUTO_APPROVE</span><span class="code-tag">MD_REVIEW</span><span class="code-tag">MORE_INFO</span></div>
+        </div>
+      </div>
+
+      <div class="wf-step rv d1">
+        <div class="wfn">08</div>
+        <div class="wfb">
+          <div class="wft">Reviewer Handoff &amp; Audit Trail</div>
+          <div class="wfd">The full agent trace — every tool call, input, output, and latency — is stored for auditor and appeal review. Physician reviewers see a structured criteria checklist with FHIR evidence links, confidence scores, and AI rationale before confirming or overriding.</div>
+          <div class="wftags"><span class="code-tag">audit_log</span><span class="code-tag">override_reason</span><span class="code-tag">FHIR references</span><span class="code-tag">JWT auth</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── REVIEWER UI MOCKUP ─── -->
+<section class="sec sec-surf" id="reviewer-ui">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">Reviewer Experience</div>
+      <h2 class="stitle">Built for <span class="grad">clinical workflows</span></h2>
+      <p class="ssub">The reviewer dashboard puts every piece of evidence, every agent decision, and every policy reference at the clinician's fingertips — without adding cognitive load.</p>
+    </div>
+    <div class="mockup rv">
+      <div class="mb-bar">
+        <div class="mb-dot" style="background:#ff5f57"></div>
+        <div class="mb-dot" style="background:#ffbd2e"></div>
+        <div class="mb-dot" style="background:#28c840"></div>
+        <div class="mb-url">lucidreview.mhkdevsandbox.com / reviews / ARF-2026-001</div>
+      </div>
+      <div class="mb-body">
+        <div class="mb-sidebar">
+          <div class="mb-slogo"><div class="mb-slm">LR</div><div class="mb-slt">LucidReview</div></div>
+          <div class="mb-nav act"><span>📋</span> Review Queue</div>
+          <div class="mb-nav"><span>🔍</span> Coverage Check</div>
+          <div class="mb-nav"><span>📚</span> Policy Browser</div>
+          <div class="mb-nav"><span>⚙️</span> Settings</div>
+        </div>
+        <div class="mb-main">
+          <div class="mb-ch">
+            <div>
+              <div class="mb-cid">Case · ARF-2026-001</div>
+              <div class="mb-cdx">Acute Respiratory Failure (J96.00) · INPATIENT</div>
+            </div>
+            <div class="mb-sbadge">IN_REVIEW</div>
+          </div>
+          <div class="mb-trace">
+            <div class="mb-ttitle">AGENT TRACE — 7 steps completed</div>
+            <div class="tr-row"><div class="trd d"></div><span class="trn">fetch_case_data</span><span class="trl">142ms</span></div>
+            <div class="tr-row"><div class="trd d"></div><span class="trn">extract_clinical_docs</span><span class="trl">891ms</span></div>
+            <div class="tr-row"><div class="trd d"></div><span class="trn">run_nlp_extraction</span><span class="trl">1,203ms</span></div>
+            <div class="tr-row"><div class="trd d"></div><span class="trn">normalize_to_fhir</span><span class="trl">445ms</span></div>
+            <div class="tr-row"><div class="trd d"></div><span class="trn">lookup_policies → NCD 240.0</span><span class="trl">67ms</span></div>
+            <div class="tr-row"><div class="trd d"></div><span class="trn">evaluate_cql_criteria</span><span class="trl">312ms</span></div>
+            <div class="tr-row"><div class="trd d"></div><span class="trn">propose_determination</span><span class="trl">89ms</span></div>
+          </div>
+          <div class="mb-crit">
+            <div class="mb-ctitle">CRITERIA CHECKLIST — NCD 240.0 (8/8 Met)</div>
+            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">SpO₂ ≤ 88% documented</span><span class="crev">Obs/SpO2-001</span></div>
+            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">PaO₂ ≤ 55 mmHg on room air</span><span class="crev">Obs/ABG-003</span></div>
+            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">Acute onset confirmed</span><span class="crev">Cond/J96.00</span></div>
+            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">Inpatient level of care required</span><span class="crev">Enc/IP-2026</span></div>
+            <div class="cr-row"><div class="crck met">✓</div><span class="crtxt">Treating physician attestation present</span><span class="crev">Doc/HP-001</span></div>
+          </div>
+        </div>
+        <div class="mb-right">
+          <div class="mb-pc">
+            <div class="mb-pt">PATIENT · MEMBER</div>
+            <div class="pr-row"><span class="prk">DOB</span><span class="prv">1958-03-12</span></div>
+            <div class="pr-row"><span class="prk">MRN</span><span class="prv">MRN-889241</span></div>
+            <div class="pr-row"><span class="prk">Payer</span><span class="prv">Medicare A/B</span></div>
+            <div class="pr-row"><span class="prk">Urgency</span><span class="prv" style="color:var(--amber)">URGENT</span></div>
+            <div class="pr-row"><span class="prk">Service</span><span class="prv">Inpatient</span></div>
+          </div>
+          <div class="mb-det">
+            <div class="mb-dl">AI DETERMINATION</div>
+            <div class="mb-dv">AUTO_APPROVE</div>
+            <div class="mb-dc">Confidence: 95% · All 8 criteria MET</div>
+            <button class="mb-dbtn">Confirm Approval</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── FEATURES ─── -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">Platform Features</div>
+      <h2 class="stitle">Everything for <span class="grad">modern UM teams</span></h2>
+    </div>
+    <div class="fgrid">
+
+      <div class="fcard rv">
+        <div class="fico" style="background:var(--cyan3)">🤖</div>
+        <div class="ftitle">Claude AI Agent</div>
+        <div class="fdesc">A fully autonomous Claude Sonnet 4.6 agent on AWS Bedrock orchestrates the entire 8-step review workflow using 14 Model Context Protocol (MCP) tools — from data fetch to final determination proposal.</div>
+        <div class="ffoot"><span class="code-tag">Claude Sonnet 4.6</span><span class="code-tag">AWS Bedrock</span><span class="code-tag">MCP Protocol</span></div>
+      </div>
+
+      <div class="fcard rv d1">
+        <div class="fico" style="background:var(--mint3)">⚕️</div>
+        <div class="ftitle">FHIR R4 Integration</div>
+        <div class="fdesc">All clinical evidence is normalized to FHIR R4 resources and persisted to HAPI FHIR server — enabling standards-compliant interoperability, CQL evaluation, and portable audit records across EHR systems.</div>
+        <div class="ffoot"><span class="code-tag">HAPI FHIR R4</span><span class="code-tag">ICD-10-CM</span><span class="code-tag">LOINC</span><span class="code-tag">SNOMED</span></div>
+      </div>
+
+      <div class="fcard rv d2">
+        <div class="fico" style="background:rgba(139,92,246,.1)">📐</div>
+        <div class="ftitle">CQL Criteria Engine</div>
+        <div class="fdesc">Coverage criteria stored and executed as CQL 1.5 libraries — the same standard powering CMS eCQMs. No ambiguous rule interpretation; every evaluation is reproducible and explainable.</div>
+        <div class="ffoot"><span class="code-tag">CQL 1.5</span><span class="code-tag">HAPI CRM</span><span class="code-tag">NCD/LCD</span></div>
+      </div>
+
+      <div class="fcard rv">
+        <div class="fico" style="background:rgba(245,166,35,.1)">🧠</div>
+        <div class="ftitle">Clinical NLP</div>
+        <div class="fdesc">cTAKES and medspacy extract clinical entities from unstructured physician notes — complete with assertion context (affirmed/negated/uncertain) and temporality (recent/historical) for each finding.</div>
+        <div class="ffoot"><span class="code-tag">cTAKES</span><span class="code-tag">medspacy</span><span class="code-tag">Assertions</span></div>
+      </div>
+
+      <div class="fcard rv d1">
+        <div class="fico" style="background:var(--cyan3)">🔎</div>
+        <div class="ftitle">Policy Browser</div>
+        <div class="fdesc">Searchable library of all NCDs, LCDs, and internal policies with structured criteria sets and CQL library links. Reviewers can explore coverage rules interactively for any ICD-10/CPT combination.</div>
+        <div class="ffoot"><span class="code-tag">NCD</span><span class="code-tag">LCD</span><span class="code-tag">Coverage Check</span></div>
+      </div>
+
+      <div class="fcard rv d2">
+        <div class="fico" style="background:rgba(245,99,66,.08)">🛡️</div>
+        <div class="ftitle">Full Audit Trail</div>
+        <div class="fdesc">Every agent run, tool call, determination, override, and reviewer action is written to an immutable audit log with actor type, timestamps, and token usage — ready for regulatory review and appeals.</div>
+        <div class="ffoot"><span class="code-tag">audit_log</span><span class="code-tag">BullMQ</span><span class="code-tag">MySQL 8</span></div>
+      </div>
+
+      <div class="fcard rv">
+        <div class="fico" style="background:var(--mint3)">📊</div>
+        <div class="ftitle">Review Queue Dashboard</div>
+        <div class="fdesc">Real-time review queue with status filtering (pending/in_review/decided), urgency flags, determination badges, and stat cards — powered by TanStack Query with automatic refresh.</div>
+        <div class="ffoot"><span class="code-tag">React 19</span><span class="code-tag">TanStack Query</span><span class="code-tag">Real-time</span></div>
+      </div>
+
+      <div class="fcard rv d1">
+        <div class="fico" style="background:rgba(139,92,246,.1)">🌳</div>
+        <div class="ftitle">Criteria Tree Visualization</div>
+        <div class="fdesc">Complex AND/OR criteria logic rendered as an interactive decision tree — reviewers can see exactly which branches are MET, NOT_MET, or UNKNOWN, with direct links to the supporting FHIR evidence.</div>
+        <div class="ffoot"><span class="code-tag">Decision Tree</span><span class="code-tag">AND/OR logic</span><span class="code-tag">Evidence links</span></div>
+      </div>
+
+      <div class="fcard rv d2">
+        <div class="fico" style="background:rgba(245,166,35,.1)">🚀</div>
+        <div class="ftitle">Production Deployment</div>
+        <div class="fdesc">Multi-stage Docker builds, Helm-ready Terraform configs, BullMQ job queues with Redis, and environment-based configuration for AWS Bedrock, HAPI FHIR, and MySQL — ready for enterprise deployment.</div>
+        <div class="ffoot"><span class="code-tag">Docker</span><span class="code-tag">Terraform</span><span class="code-tag">Redis</span><span class="code-tag">Helm</span></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── ARCHITECTURE ─── -->
+<section class="sec sec-surf" id="architecture">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">System Architecture</div>
+      <h2 class="stitle">A <span class="grad">microservices platform</span><br>built for healthcare scale</h2>
+    </div>
+    <div class="arch-box-wrap rv">
+      <div class="arch-rows">
+        <div>
+          <div class="arch-rl">// Reviewer Interface</div>
+          <div class="arch-ri">
+            <div class="arch-b ac"><div class="arch-bico">⚛️</div><div class="arch-bname">Reviewer UI</div><div class="arch-bdet">React 19 · Vite · :5173</div></div>
+            <div class="arch-b"><div class="arch-bico">🔄</div><div class="arch-bname">TanStack Query</div><div class="arch-bdet">Real-time data fetching</div></div>
+            <div class="arch-b"><div class="arch-bico">🎨</div><div class="arch-bname">Tailwind CSS</div><div class="arch-bdet">Utility-first styling</div></div>
+          </div>
+        </div>
+        <div class="arch-arr">↕</div>
+        <div>
+          <div class="arch-rl">// API &amp; Orchestration Layer</div>
+          <div class="arch-ri">
+            <div class="arch-b ac"><div class="arch-bico">⚡</div><div class="arch-bname">Fastify Backend</div><div class="arch-bdet">Node.js API · :3000</div></div>
+            <div class="arch-b ac"><div class="arch-bico">🤖</div><div class="arch-bname">Bedrock Agent Runner</div><div class="arch-bdet">Claude Sonnet 4.6 loop</div></div>
+            <div class="arch-b"><div class="arch-bico">📬</div><div class="arch-bname">BullMQ Workers</div><div class="arch-bdet">Async job processing</div></div>
+            <div class="arch-b"><div class="arch-bico">🔐</div><div class="arch-bname">JWT Auth</div><div class="arch-bdet">Role-based access</div></div>
+          </div>
+        </div>
+        <div class="arch-arr">↕</div>
+        <div>
+          <div class="arch-rl">// MCP Tool Server (14 Tools)</div>
+          <div class="arch-ri">
+            <div class="arch-b am"><div class="arch-bico">🔧</div><div class="arch-bname">UM REST Tools</div><div class="arch-bdet">7 tools · Case/Docs/Coverage</div></div>
+            <div class="arch-b am"><div class="arch-bico">📄</div><div class="arch-bname">PDF + OCR Tool</div><div class="arch-bdet">pdf-parse + AWS Textract</div></div>
+            <div class="arch-b am"><div class="arch-bico">🧠</div><div class="arch-bname">NLP Tool</div><div class="arch-bdet">cTAKES / medspacy</div></div>
+            <div class="arch-b am"><div class="arch-bico">⚕️</div><div class="arch-bname">FHIR Tools</div><div class="arch-bdet">Bundle · Query · CQL eval</div></div>
+          </div>
+        </div>
+        <div class="arch-arr">↕</div>
+        <div>
+          <div class="arch-rl">// External Services &amp; Data Stores</div>
+          <div class="arch-ri">
+            <div class="arch-b"><div class="arch-bico">☁️</div><div class="arch-bname">AWS Bedrock</div><div class="arch-bdet">Claude Sonnet · temp=0.1</div></div>
+            <div class="arch-b av"><div class="arch-bico">🏥</div><div class="arch-bname">HAPI FHIR R4</div><div class="arch-bdet">Clinical data · CRM · :8080</div></div>
+            <div class="arch-b"><div class="arch-bico">🔬</div><div class="arch-bname">NLP Service</div><div class="arch-bdet">cTAKES · :8081</div></div>
+            <div class="arch-b"><div class="arch-bico">🗄️</div><div class="arch-bname">MySQL 8.0</div><div class="arch-bdet">Reviews · Policies · Audit</div></div>
+            <div class="arch-b"><div class="arch-bico">⚡</div><div class="arch-bname">Redis 7</div><div class="arch-bdet">BullMQ job queue</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── CLINICAL STANDARDS ─── -->
+<section class="sec" id="clinical">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">Clinical Standards</div>
+      <h2 class="stitle">Built on the <span class="grad">standards that matter</span></h2>
+      <p class="ssub">LucidReview doesn't build proprietary data formats. Every clinical concept uses the interoperability standards that regulators, payers, and providers already rely on.</p>
+    </div>
+    <div class="std-grid">
+
+      <div class="std-card rv">
+        <div class="std-ico" style="background:var(--cyan3)">🏥</div>
+        <div class="std-body">
+          <h3>FHIR R4</h3>
+          <p>All clinical evidence is normalized to HL7 FHIR R4 resources — enabling standards-compliant interoperability with any EHR system. Patient, Encounter, Condition, Observation, Procedure, MedicationRequest, and DocumentReference resources are created with proper terminology bindings.</p>
+          <div class="std-codes"><span class="tag tc">Patient</span><span class="tag tc">Encounter</span><span class="tag tc">Condition</span><span class="tag tc">Observation</span></div>
+        </div>
+      </div>
+
+      <div class="std-card rv d1">
+        <div class="std-ico" style="background:rgba(139,92,246,.1)">📐</div>
+        <div class="std-body">
+          <h3>Clinical Quality Language (CQL)</h3>
+          <p>Coverage criteria are expressed as CQL 1.5 libraries — the same standard powering CMS eCQMs and HEDIS measures. Criteria execute against live FHIR data via HAPI FHIR's Clinical Reasoning module, producing MET / NOT_MET / UNKNOWN with FHIR resource citations.</p>
+          <div class="std-codes"><span class="tag tc">CQL 1.5</span><span class="tag tc">HAPI CRM</span><span class="tag tc">eCQM-compatible</span></div>
+        </div>
+      </div>
+
+      <div class="std-card rv d2">
+        <div class="std-ico" style="background:rgba(245,166,35,.1)">🔤</div>
+        <div class="std-body">
+          <h3>Clinical Terminology</h3>
+          <p>Full support for the major clinical code systems used in utilization management: ICD-10-CM for diagnoses, SNOMED CT for clinical findings, LOINC for lab and vital observations, RxNorm for medications, and CPT/HCPCS for procedures and services.</p>
+          <div class="std-codes"><span class="tag ta">ICD-10-CM</span><span class="tag ta">SNOMED CT</span><span class="tag ta">LOINC</span><span class="tag ta">RxNorm</span><span class="tag ta">CPT</span></div>
+        </div>
+      </div>
+
+      <div class="std-card rv d3">
+        <div class="std-ico" style="background:var(--mint3)">📋</div>
+        <div class="std-body">
+          <h3>Coverage Policy Standards</h3>
+          <p>Supports all three tiers of Medicare coverage policy: National Coverage Determinations (NCDs) published by CMS nationally, Local Coverage Determinations (LCDs) from Medicare Administrative Contractors, and internal payer-specific policies — all with structured criteria sets.</p>
+          <div class="std-codes"><span class="tag tm">NCD</span><span class="tag tm">LCD</span><span class="tag tm">Internal</span><span class="tag tm">CMS</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── DETERMINATION OUTCOMES ─── -->
+<section class="sec sec-dark">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">Determination Logic</div>
+      <h2 class="stitle">Conservative by design. <span class="grad">Explainable by default.</span></h2>
+      <p class="ssub">LucidReview never gambles with clinical decisions. Deterministic logic — not LLM inference — drives every outcome. The AI summarizes; the criteria decide.</p>
+    </div>
+    <div class="det-grid">
+      <div class="det-card ap rv">
+        <div class="det-ico">✅</div>
+        <div class="det-name">AUTO_APPROVE</div>
+        <div class="det-rule">All criteria in scope return MET. Evidence is complete and unambiguous. High confidence threshold reached.</div>
+        <div class="det-conf">Confidence ≥ 90% · All criteria MET</div>
+      </div>
+      <div class="det-card rv rv d1">
+        <div class="det-ico">👨‍⚕️</div>
+        <div class="det-name">MD_REVIEW</div>
+        <div class="det-rule">One or more criteria return NOT_MET or borderline evidence. Routes to physician reviewer for clinical judgment.</div>
+        <div class="det-conf">Any NOT_MET → escalate to physician</div>
+      </div>
+      <div class="det-card mi rv d2">
+        <div class="det-ico">📋</div>
+        <div class="det-name">MORE_INFO</div>
+        <div class="det-rule">One or more criteria return UNKNOWN due to missing or ambiguous documentation. Additional records requested.</div>
+        <div class="det-conf">Any UNKNOWN → request documentation</div>
+      </div>
+      <div class="det-card dn rv d3">
+        <div class="det-ico">❌</div>
+        <div class="det-name">DENY</div>
+        <div class="det-rule">All criteria clearly NOT_MET with complete evidence. Conservative application; rare in practice; always goes to MD_REVIEW first.</div>
+        <div class="det-conf">All NOT_MET + complete evidence</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── SECURITY ─── -->
+<section class="sec" id="security">
+  <div class="wrap">
+    <div class="sh rv">
+      <div class="sec-label">Security &amp; Compliance</div>
+      <h2 class="stitle">Enterprise-grade <span class="grad">trust infrastructure</span></h2>
+    </div>
+    <div class="comp-grid">
+      <div class="comp-card rv">
+        <div class="comp-ico">🔒</div>
+        <div class="comp-title">HIPAA-Ready Architecture</div>
+        <div class="comp-desc">All PHI handled within your VPC. AWS Bedrock processes data under BAA. No patient data leaves your cloud boundary. Designed for HIPAA Technical Safeguards compliance.</div>
+      </div>
+      <div class="comp-card rv d1">
+        <div class="comp-ico">📝</div>
+        <div class="comp-title">Immutable Audit Log</div>
+        <div class="comp-desc">Every agent action, tool call, determination, override, and reviewer note is written to an append-only audit log with actor type, timestamp, and complete input/output — ready for CMS audits and appeals.</div>
+      </div>
+      <div class="comp-card rv d2">
+        <div class="comp-ico">👥</div>
+        <div class="comp-title">Role-Based Access Control</div>
+        <div class="comp-desc">JWT-based authentication with three roles: NURSE_REVIEWER (queue, view cases), MD_REVIEWER (override determinations), and ADMIN (system config, user management, prompt versioning).</div>
+      </div>
+      <div class="comp-card rv">
+        <div class="comp-ico">🔑</div>
+        <div class="comp-title">Human Oversight Guarantee</div>
+        <div class="comp-desc">The AI agent never directly approves or denies. It proposes a determination with evidence. A licensed clinician confirms or overrides — satisfying CMS and URAC human review requirements.</div>
+      </div>
+      <div class="comp-card rv d1">
+        <div class="comp-ico">🧪</div>
+        <div class="comp-title">Validated &amp; Tested</div>
+        <div class="comp-desc">218-test suite across all packages (Vitest) plus 13 integration tests against real MySQL and HAPI FHIR instances. Prompt versioning enables A/B testing and rollback of AI system prompts without redeployment.</div>
+      </div>
+      <div class="comp-card rv d2">
+        <div class="comp-ico">🌐</div>
+        <div class="comp-title">Interoperability Standards</div>
+        <div class="comp-desc">FHIR R4 data model ensures compliance with CMS Interoperability and Patient Access Rule (CMS-9115-F) and positions the platform for future FHIR-based prior auth mandates.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ─── TECH STACK ─── -->
+<section class="sec sec-surf" style="padding:56px 0">
+  <div class="wrap">
+    <div class="sh rv" style="margin-bottom:28px">
+      <div class="sec-label">Technology Stack</div>
+    </div>
+    <div class="stack-row rv">
+      <div class="sk-pill"><span class="sk-ico">⚛️</span>React 19</div>
+      <div class="sk-pill"><span class="sk-ico">⚡</span>Fastify</div>
+      <div class="sk-pill"><span class="sk-ico">📘</span>TypeScript</div>
+      <div class="sk-pill"><span class="sk-ico">🤖</span>Claude Sonnet 4.6</div>
+      <div class="sk-pill"><span class="sk-ico">☁️</span>AWS Bedrock</div>
+      <div class="sk-pill"><span class="sk-ico">🏥</span>HAPI FHIR R4</div>
+      <div class="sk-pill"><span class="sk-ico">📐</span>CQL 1.5</div>
+      <div class="sk-pill"><span class="sk-ico">🧠</span>cTAKES / medspacy</div>
+      <div class="sk-pill"><span class="sk-ico">🗄️</span>MySQL 8</div>
+      <div class="sk-pill"><span class="sk-ico">⚡</span>Redis / BullMQ</div>
+      <div class="sk-pill"><span class="sk-ico">🔧</span>MCP Protocol</div>
+      <div class="sk-pill"><span class="sk-ico">🔄</span>TanStack Query</div>
+      <div class="sk-pill"><span class="sk-ico">🐋</span>Docker Compose</div>
+      <div class="sk-pill"><span class="sk-ico">🌿</span>Terraform</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA ─── -->
+<section class="cta-sec" id="cta">
+  <div class="cta-glow"></div>
+  <div class="wrap">
+    <div class="sec-label rv">Get Started</div>
+    <h2 class="rv">Ready to modernize<br><span class="grad">utilization management?</span></h2>
+    <p class="rv d1">LucidReview is open-source and deployable with Docker Compose. Try the live deployment or explore the source on GitHub.</p>
+    <div class="cta-acts rv d2">
+      <a href="https://lucidreview.mhkdevsandbox.com/" class="btn-p" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        Try It Live
+      </a>
+      <a href="https://github.com/kkompalli/LucidReview" class="btn-s" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+      <a href="#how-it-works" class="btn-s">How It Works</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="wrap">
+    <div class="fi">
+      <div class="flogo"><div class="flm">LR</div><span class="flt">LucidReview</span></div>
+      <div class="flinks">
+        <a href="https://lucidreview.mhkdevsandbox.com/" target="_blank" rel="noopener">Live App</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#clinical">Clinical Standards</a>
+        <a href="https://github.com/kkompalli/LucidReview" target="_blank">GitHub</a>
+      </div>
+      <div class="fcopy">LLM-augmented Utilization Management · Claude on AWS Bedrock</div>
+    </div>
+  </div>
+</footer>
+
+</div><!-- /pc -->
+
+<script>
+/* ── Background particle canvas ── */
+(function(){
+  const c=document.getElementById('bgc'),ctx=c.getContext('2d');
+  let W,H,nodes=[];
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight}
+  function mk(){return{x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.28,vy:(Math.random()-.5)*.28,r:Math.random()*1.4+.4,h:Math.random()>.5?'#00d4f5':'#00e5a0'}}
+  function init(){nodes=Array.from({length:75},mk)}
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+      const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<115){ctx.beginPath();ctx.strokeStyle=`rgba(0,212,245,${.11*(1-d/115)})`;ctx.lineWidth=.5;ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.stroke()}
+    }
+    nodes.forEach(n=>{
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fillStyle=n.h+'88';ctx.fill();
+      n.x+=n.vx;n.y+=n.vy;
+      if(n.x<0||n.x>W)n.vx*=-1;if(n.y<0||n.y>H)n.vy*=-1;
+    });
+    requestAnimationFrame(draw);
+  }
+  resize();init();draw();
+  window.addEventListener('resize',()=>{resize()});
+})();
+
+/* ── Nav scroll ── */
+const nav=document.getElementById('mn');
+window.addEventListener('scroll',()=>nav.classList.toggle('sc',scrollY>40));
+
+/* ── Scroll reveal ── */
+const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target)}}),{threshold:.1});
+document.querySelectorAll('.rv').forEach(el=>ro.observe(el));
+
+/* ── Counter animation ── */
+const co=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;
+  const el=e.target,tgt=+el.dataset.count,suf=el.dataset.suf||'';
+  let t0=null;
+  (function step(ts){if(!t0)t0=ts;const p=Math.min((ts-t0)/1500,1),ease=1-Math.pow(1-p,3);el.textContent=Math.floor(ease*tgt)+suf;if(p<1)requestAnimationFrame(step);else el.textContent=tgt+suf})();
+  co.unobserve(el);
+}),{threshold:.5});
+document.querySelectorAll('[data-count]').forEach(el=>co.observe(el));
+
+/* ── Hero pipeline loop ── */
+(function(){
+  const steps=document.querySelectorAll('#psteps .sr');
+  const box=document.getElementById('detbox');
+  let cur=4;
+  function advance(){
+    if(cur>=steps.length){box.style.opacity='1';setTimeout(reset,5000);return}
+    const s=steps[cur];s.classList.remove('active');s.classList.add('done');
+    const ss=s.querySelector('.ss');if(ss){ss.className='ss d';ss.textContent='DONE'}
+    cur++;
+    if(cur<steps.length){const n=steps[cur];n.classList.add('active');const ns=n.querySelector('.ss');if(ns){ns.className='ss a';ns.textContent='RUNNING'}}
+    setTimeout(advance,1100);
+  }
+  function reset(){
+    cur=0;box.style.opacity='.35';
+    steps.forEach((s,i)=>{
+      s.classList.remove('active','done');
+      const ss=s.querySelector('.ss');if(!ss)return;
+      if(i===0){s.classList.add('active');ss.className='ss a';ss.textContent='RUNNING'}
+      else{ss.className='ss p';ss.textContent='PENDING'}
+    });
+    setTimeout(advance,1100);
+  }
+  setTimeout(advance,1800);
+})();
+</script>
+</body>
+</html>
